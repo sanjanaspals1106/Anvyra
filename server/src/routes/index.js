@@ -48,6 +48,6 @@ router.get('/projects/:id/expenses', officer, wrap(records.listExpenses));
 router.post('/projects/:id/expenses', officer, wrap(records.addExpense));
 
 router.get('/supervisors', officer, wrap(records.listSupervisors));
-router.post('/supervisors', officer, wrap(records.addSupervisor));
+router.put('/projects/:id/supervisor', officer, wrap(records.changeSupervisor));
 
 export default router;

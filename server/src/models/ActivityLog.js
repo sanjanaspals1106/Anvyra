@@ -15,6 +15,7 @@ const activityLogSchema = new mongoose.Schema({
       'issue_resolved',
       'expense_added',
       'supervisor_added',
+      'supervisor_changed',
     ],
     required: true,
   },

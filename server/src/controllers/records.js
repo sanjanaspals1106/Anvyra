@@ -130,36 +130,56 @@ export async function addExpense(req, res) {
 
 // ---------------------------------------------------------------- Supervisors (officer)
 
-// GET /api/supervisors
+// GET /api/supervisors -> { supervisors: current ones (one per project), former: replaced ones }
 export async function listSupervisors(_req, res) {
-  const supervisors = await User.find({ role: 'supervisor' }).sort('createdAt').populate('projectId', 'name type').lean();
-  res.json({ supervisors });
+  const all = await User.find({ role: 'supervisor' }).sort('createdAt').populate('projectId', 'name type').lean();
+  res.json({
+    supervisors: all.filter((u) => u.active !== false),
+    former: all.filter((u) => u.active === false),
+  });
 }
 
-// POST /api/supervisors { name, email, password, language, projectId }
-// The newest supervisor becomes the project's supervisor shown on the dashboard.
-export async function addSupervisor(req, res) {
-  const name = String(req.body.name || '').trim();
-  const email = String(req.body.email || '').trim().toLowerCase();
-  const password = String(req.body.password || '');
-  const language = req.body.language || 'en';
-  if (!name) throw httpError(400, 'Please enter the name.');
-  if (!/^\S+@\S+\.\S+$/.test(email)) throw httpError(400, 'Please enter a valid email.');
-  if (password.length < 6) throw httpError(400, 'The password must have at least 6 characters.');
-  if (!['en', 'hi', 'te'].includes(language)) throw httpError(400, 'Unknown language.');
-  const project = await Project.findById(checkId(req.body.projectId, 'project'));
-  if (!project) throw httpError(400, 'Please choose a project.');
-  if (await User.exists({ email })) throw httpError(409, 'Someone already uses this email.');
+// PUT /api/projects/:id/supervisor
+//   { supervisorId }                          choose a former supervisor again, or
+//   { name, email, password, language }       create a new one
+// The project keeps exactly one active supervisor. The old one can no longer sign in, but stays in
+// the database, so their past updates and activity log entries still show their name.
+export async function changeSupervisor(req, res) {
+  const project = await Project.findById(checkId(req.params.id));
+  if (!project) throw httpError(404, 'Project not found.');
 
-  const user = await User.create({
-    name, email, language, role: 'supervisor', projectId: project._id,
-    passwordHash: await bcrypt.hash(password, 10),
-  });
-  project.supervisorId = user._id;
+  let next;
+  if (req.body.supervisorId) {
+    next = await User.findOne({ _id: checkId(req.body.supervisorId, 'supervisor'), role: 'supervisor' });
+    if (!next) throw httpError(400, 'That supervisor does not exist.');
+    if (next.active !== false) throw httpError(400, 'That supervisor is already working on a project.');
+  } else {
+    const name = String(req.body.name || '').trim();
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
+    const language = req.body.language || 'en';
+    if (!name) throw httpError(400, 'Please enter the name.');
+    if (!/^\S+@\S+\.\S+$/.test(email)) throw httpError(400, 'Please enter a valid email.');
+    if (password.length < 6) throw httpError(400, 'The password must have at least 6 characters.');
+    if (!['en', 'hi', 'te'].includes(language)) throw httpError(400, 'Unknown language.');
+    if (await User.exists({ email })) throw httpError(409, 'Someone already uses this email.');
+    next = new User({ name, email, language, role: 'supervisor', passwordHash: await bcrypt.hash(password, 10) });
+  }
+
+  const old = await User.findOne({ role: 'supervisor', projectId: project._id, active: { $ne: false }, _id: { $ne: next._id } });
+  if (old) {
+    old.active = false;
+    await old.save();
+  }
+  next.projectId = project._id;
+  next.active = true;
+  await next.save();
+  project.supervisorId = next._id;
   await project.save();
+
   await logActivity({
-    projectId: project._id, userId: req.user._id, action: 'supervisor_added',
-    details: `${name} added as supervisor`, refId: user._id,
+    projectId: project._id, userId: req.user._id, action: 'supervisor_changed',
+    details: old ? `${old.name} replaced by ${next.name}` : `${next.name} is now the supervisor`, refId: next._id,
   });
-  res.status(201).json({ supervisor: user });
+  res.json({ supervisor: next, previous: old || null });
 }

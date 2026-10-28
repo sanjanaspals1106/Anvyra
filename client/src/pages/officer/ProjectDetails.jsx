@@ -53,7 +53,7 @@ function AddExpense({ projectId, onSaved }) {
 const ACTION_TEXT = {
   update_submitted: 'Update sent', update_approved: 'Update approved', update_rejected: 'Update rejected',
   material_received: 'Material received', issue_raised: 'Issue reported', issue_resolved: 'Issue resolved',
-  expense_added: 'Expense added', supervisor_added: 'Supervisor added',
+  expense_added: 'Expense added', supervisor_added: 'Supervisor added', supervisor_changed: 'Supervisor changed',
 };
 
 export default function ProjectDetails() {

@@ -13,6 +13,7 @@ export async function login(req, res) {
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     throw httpError(401, 'Wrong email or password.');
   }
+  if (user.active === false) throw httpError(403, 'This account is no longer active. Please ask the Village Officer.');
   res.json({ token: signToken(user), user });
 }
 

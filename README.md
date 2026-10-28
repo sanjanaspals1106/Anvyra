@@ -13,7 +13,7 @@ Nothing is ever auto-approved.
 
 | Role | Language | Can do |
 |---|---|---|
-| Village Officer | English | See all projects, review updates, resolve issues, add expenses, add supervisors |
+| Village Officer | English | See all projects, review updates, resolve issues, add expenses, change the supervisor of a project |
 | Site Supervisor | English / Hindi / Telugu | Own project only: send updates, log material deliveries, report issues |
 
 ## Setup
@@ -104,7 +104,7 @@ client/src  api.js, auth, i18n (en/hi/te), components, pages/officer, pages/supe
 `GET /api/projects`, `/projects/:id`, `/projects/:id/updates`, `/projects/:id/activity`,
 `POST /api/match/preview`, `POST /api/updates`, `GET /api/updates/mine`, `GET /api/updates/review`,
 `PATCH /api/updates/:id/approve|reject`, `GET|POST /api/projects/:id/receipts|issues|expenses`,
-`GET /api/issues`, `PATCH /api/issues/:id/resolve`, `GET|POST /api/supervisors`.
+`GET /api/issues`, `PATCH /api/issues/:id/resolve`, `GET /api/supervisors`, `PUT /api/projects/:id/supervisor`.
 Access rules are enforced on the server: a supervisor gets 403 for any other project.
 
 ## Screenshots to take for the report
@@ -114,5 +114,5 @@ Project Details; Send Update with live preview (try Hindi and Telugu); Materials
 
 ## Notes
 
-- Several supervisors can be added to one project; the newest one is shown on the dashboard.
+- Each project has exactly one active supervisor. "Change supervisor" (officer) replaces them: the old one can no longer sign in but stays in the database, so their past updates and activity log entries keep their name. A former supervisor can be chosen again later.
 - Uploaded photos are saved in `server/uploads/` (not in git).

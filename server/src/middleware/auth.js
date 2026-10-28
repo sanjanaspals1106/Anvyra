@@ -21,6 +21,7 @@ export async function requireAuth(req, _res, next) {
     }
     const user = await User.findById(payload.id);
     if (!user) throw httpError(401, 'This account no longer exists.');
+    if (user.active === false) throw httpError(401, 'This account is no longer active.');
     req.user = user;
     next();
   } catch (err) {

@@ -7,6 +7,8 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ['officer', 'supervisor'], required: true },
+    // A supervisor who was replaced is kept (their updates and log entries still point to them) but cannot sign in.
+    active: { type: Boolean, default: true },
     language: { type: String, enum: ['en', 'hi', 'te'], default: 'en' },
     // Only supervisors belong to a project. The officer sees every project.
     projectId: {
