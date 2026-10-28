@@ -1,12 +1,15 @@
 // Runs every sample update through matchUpdate and prints a table with the accuracy.
 // Translation is replaced by the stored English text, and the project data comes from the
 // demo data file, so this test needs no internet and no database.
-//   npm run test:matching
+//   npm run test:matching            (tuning set, must reach 90%)
+//   npm run test:heldout             (held-out set, report only)
 
 import { projects } from '../seed/data.js';
 import { matchUpdate } from './index.js';
 import { warmUp } from './embeddings.js';
-import { cases } from './testcases.js';
+// Default: the tuning set. With --heldout: the separate held-out set (reported only, never used for tuning).
+const heldout = process.argv.includes('--heldout');
+const { cases } = await import(heldout ? './testcases-heldout.js' : './testcases.js');
 
 const PASS_MARK = 90;
 
@@ -71,10 +74,17 @@ await warmUp();
 const main = await run({ native: false });
 console.table(main.rows);
 const accuracy = (main.pass / main.total) * 100;
-console.log(`\nMatching accuracy: ${main.pass}/${main.total} = ${accuracy.toFixed(1)}%  (needs ${PASS_MARK}%)`);
+console.log(`\n${heldout ? 'HELD-OUT' : 'Tuning-set'} matching accuracy: ${main.pass}/${main.total} = ${accuracy.toFixed(1)}%${heldout ? "" : `  (needs ${PASS_MARK}%)`}`);
 
 const native = await run({ native: true });
 console.log(`Without translation (Hindi/Telugu words only): ${native.pass}/${native.total} = ${((native.pass / native.total) * 100).toFixed(1)}%  (information only)`);
 if (process.argv.includes('--native')) console.table(native.rows.filter((r) => r.ok === 'FAIL'));
 
+if (heldout) {
+  const wanted = (c) => (c.ambiguous ? 'needs_check, qty ' + c.expect[0].qty : c.expect.map((e) => `${e.task || e.material}=${e.qty}`).join(' + ') || '(nothing)');
+  const failed = cases.filter((_, i) => main.rows[i].ok === 'FAIL');
+  console.log(`\nFailures (${failed.length}), not fixed:`);
+  failed.forEach((c) => console.log(`- [${c.project}] "${c.text}"\n    expected: ${wanted(c)}\n    found:    ${main.rows[cases.indexOf(c)].found}`));
+  process.exit(0);
+}
 process.exit(accuracy >= PASS_MARK ? 0 : 1);
