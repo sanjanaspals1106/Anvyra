@@ -1,7 +1,8 @@
-import { Update } from '../models/index.js';
+import { Update, Task, Material } from '../models/index.js';
+import { getTaskProgress } from '../utils/progress.js';
 import { matchUpdate } from '../matching/index.js';
 import { logActivity } from '../utils/activity.js';
-import { httpError } from '../utils/http.js';
+import { httpError, checkId } from '../utils/http.js';
 
 const MAX_TEXT = 1000;
 
@@ -78,4 +79,105 @@ export async function reviewQueue(req, res) {
     return rank(a) - rank(b) || new Date(a.createdAt) - new Date(b.createdAt);
   });
   res.json({ updates: updates.map((u) => ({ ...u, items: u.items.map(withName) })) });
+}
+
+// ---------------------------------------------------------------- Officer review
+
+// Checks the officer's edits and returns the final items list (does not save anything).
+async function applyEdits(update, edits = []) {
+  if (!Array.isArray(edits)) throw httpError(400, 'Items must be a list.');
+  const [tasks, materials] = await Promise.all([
+    Task.find({ projectId: update.projectId }).select('_id').lean(),
+    Material.find({ projectId: update.projectId }).select('_id').lean(),
+  ]);
+  const taskIds = new Set(tasks.map((t) => String(t._id)));
+  const materialIds = new Set(materials.map((m) => String(m._id)));
+  const items = update.items.map((it) => it.toObject());
+
+  for (const edit of edits) {
+    const item = items.find((it) => String(it._id) === String(edit._id));
+    if (!item) throw httpError(400, 'One of the edited items does not belong to this update.');
+    if (edit.quantity !== undefined) {
+      const q = Number(edit.quantity);
+      if (!Number.isFinite(q) || q < 0) throw httpError(400, 'Quantity must be a number, zero or more.');
+      item.quantity = q;
+    }
+    // The officer may pick another task (or material) from the same project.
+    if (item.kind === 'task' && edit.taskId) {
+      if (!taskIds.has(String(edit.taskId))) throw httpError(400, 'That task is not part of this project.');
+      item.taskId = edit.taskId;
+      item.matchStatus = 'matched';
+    }
+    if (item.kind === 'material' && edit.materialId) {
+      if (!materialIds.has(String(edit.materialId))) throw httpError(400, 'That material is not part of this project.');
+      item.materialId = edit.materialId;
+      item.matchStatus = 'matched';
+    }
+  }
+  for (const [n, item] of items.entries()) {
+    const target = item.kind === 'task' ? item.taskId : item.materialId;
+    if (!target) throw httpError(400, `Item ${n + 1}: please choose a ${item.kind} before approving.`);
+    if (!(item.quantity > 0)) throw httpError(400, `Item ${n + 1}: please enter a quantity above zero.`);
+  }
+  if (!items.length) throw httpError(400, 'This update has nothing to approve. Please reject it with a comment.');
+  return items;
+}
+
+// Items that push a task above its planned quantity (needs an officer comment to approve).
+async function overPlannedTasks(update, items) {
+  const { tasks } = await getTaskProgress(update.projectId);
+  const added = {};
+  items.filter((i) => i.kind === 'task').forEach((i) => {
+    added[i.taskId] = (added[i.taskId] || 0) + i.quantity;
+  });
+  return tasks.filter((t) => added[t.taskId] && t.doneQty + added[t.taskId] > t.plannedQty).map((t) => t.name);
+}
+
+// Saves the decision only if the update is still "waiting", in one step.
+// Two quick clicks (or two officers) can therefore never decide the same update twice.
+async function decide(req, set) {
+  const done = await Update.findOneAndUpdate(
+    { _id: req.params.id, status: 'waiting' },
+    { $set: { ...set, reviewedBy: req.user._id, reviewedAt: new Date() } },
+    { new: true }
+  );
+  if (!done) throw httpError(409, 'This update was already approved or rejected.');
+  return done;
+}
+
+async function loadWaiting(id) {
+  const update = await Update.findById(checkId(id));
+  if (!update) throw httpError(404, 'Update not found.');
+  if (update.status !== 'waiting') throw httpError(409, 'This update was already approved or rejected.');
+  return update;
+}
+
+// PATCH /api/updates/:id/approve { items?: [{ _id, taskId?, materialId?, quantity? }], comment? }
+export async function approve(req, res) {
+  const update = await loadWaiting(req.params.id);
+  const comment = String(req.body.comment || '').trim();
+  const items = await applyEdits(update, req.body.items);
+  const over = await overPlannedTasks(update, items);
+  if (over.length && !comment) {
+    throw httpError(400, `This goes above the planned quantity for ${over.join(', ')}. Please write a comment to approve.`);
+  }
+  const done = await decide(req, { status: 'approved', items, officerComment: comment, matchStatus: 'matched' });
+  await logActivity({
+    projectId: done.projectId, userId: req.user._id, action: 'update_approved',
+    details: done.englishText, refId: done._id,
+  });
+  res.json({ update: done });
+}
+
+// PATCH /api/updates/:id/reject { comment }
+export async function reject(req, res) {
+  const comment = String(req.body.comment || '').trim();
+  if (!comment) throw httpError(400, 'Please write a comment so the supervisor knows why.');
+  await loadWaiting(req.params.id);
+  const done = await decide(req, { status: 'rejected', officerComment: comment });
+  await logActivity({
+    projectId: done.projectId, userId: req.user._id, action: 'update_rejected',
+    details: comment, refId: done._id,
+  });
+  res.json({ update: done });
 }
