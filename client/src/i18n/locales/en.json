@@ -1,0 +1,54 @@
+{
+  "app": {
+    "name": "ANVYRA",
+    "tagline": "Building our village, one update at a time",
+    "description": "A simple way to follow village building work. Supervisors send a daily update in their own words, and the Village Officer checks it."
+  },
+  "features": {
+    "ai": "AI understands updates in English, Hindi and Telugu",
+    "approval": "The officer approves every update",
+    "all": "Progress, materials and budget in one place"
+  },
+  "login": {
+    "title": "Sign in",
+    "subtitle": "Welcome back. Please enter your details.",
+    "email": "Email",
+    "password": "Password",
+    "show": "Show password",
+    "hide": "Hide password",
+    "submit": "Sign in",
+    "submitting": "Signing in...",
+    "demo": "Demo access",
+    "demoHint": "Tap a button to fill in the demo login.",
+    "officer": "Village Officer",
+    "supervisorOf": "Supervisor: {{project}}",
+    "needBoth": "Please enter your email and password.",
+    "failed": "Could not sign in. Please try again."
+  },
+  "nav": {
+    "dashboard": "Village Dashboard",
+    "review": "Review Updates",
+    "projects": "Projects",
+    "issues": "Issues",
+    "supervisors": "Supervisors",
+    "myProject": "My Project",
+    "sendUpdate": "Send Update",
+    "myUpdates": "My Updates",
+    "materialsIssues": "Materials & Issues",
+    "projectDetails": "Project Details",
+    "menu": "Menu",
+    "close": "Close menu",
+    "signOut": "Sign out",
+    "villageOfficer": "Village Officer",
+    "siteSupervisor": "Site Supervisor"
+  },
+  "common": {
+    "loading": "Loading...",
+    "retry": "Try again",
+    "errorTitle": "Something went wrong",
+    "save": "Save",
+    "cancel": "Cancel",
+    "language": "Language",
+    "nothingHere": "Nothing here yet."
+  }
+}

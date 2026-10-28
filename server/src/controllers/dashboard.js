@@ -27,3 +27,12 @@ export async function dashboard(_req, res) {
 export async function progressHistory(_req, res) {
   res.json({ projects: await getProgressHistory() });
 }
+
+// GET /api/dashboard/counts - small numbers for the sidebar badges
+export async function counts(_req, res) {
+  const [waitingUpdates, openIssues] = await Promise.all([
+    Update.countDocuments({ status: 'waiting' }),
+    Issue.countDocuments({ status: 'open' }),
+  ]);
+  res.json({ waitingUpdates, openIssues });
+}

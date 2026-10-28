@@ -19,6 +19,7 @@ router.patch('/auth/language', requireAuth, wrap(auth.setLanguage));
 router.use(requireAuth);
 
 router.get('/dashboard', officer, wrap(dash.dashboard));
+router.get('/dashboard/counts', officer, wrap(dash.counts));
 router.get('/dashboard/progress-history', officer, wrap(dash.progressHistory));
 
 router.get('/projects', wrap(projects.listProjects));
