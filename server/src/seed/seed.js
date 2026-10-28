@@ -8,7 +8,8 @@ import { connectDB, disconnectDB } from '../config/db.js';
 import {
   User, Project, Task, Material, Update, MaterialReceipt, Issue, Expense, ActivityLog,
 } from '../models/index.js';
-import { VILLAGE, DEMO_PASSWORD, officer, projects } from './data.js';
+import { VILLAGE, DEMO_PASSWORD, officer, projects, waitingUpdates } from './data.js';
+import { matchUpdate } from '../matching/index.js';
 
 const d = (s) => new Date(`${s}T10:00:00+05:30`); // dates in Indian time
 const nextDay = (s) => new Date(d(s).getTime() + 24 * 60 * 60 * 1000);
@@ -127,6 +128,25 @@ export async function seed() {
       logs.push({ projectId: project._id, userId: officerUser._id, action: 'expense_added',
         details: `Rs ${e.amount.toLocaleString('en-IN')} - ${e.note}`, refId: exp._id, at: d(e.date) });
     }
+  }
+
+  // 8. Waiting updates: run through the real matcher, translation replaced by the English text
+  const supervisors = await User.find({ role: 'supervisor' }).lean();
+  for (const w of waitingUpdates) {
+    const project = await Project.findOne({ name: w.project }).lean();
+    const sup = supervisors.find((s) => String(s.projectId) === String(project._id));
+    const result = await matchUpdate({
+      text: w.text,
+      projectId: project._id,
+      translate: async (text) => ({ text: w.english || text, ok: true }),
+    });
+    const update = await Update.create({
+      projectId: project._id, supervisorId: sup._id, workDate: d(w.date), originalText: w.text,
+      language: result.language, englishText: result.englishText, partsFound: result.partsFound,
+      items: result.items, warnings: result.warnings, matchStatus: result.matchStatus, status: 'waiting',
+    });
+    logs.push({ projectId: project._id, userId: sup._id, action: 'update_submitted',
+      details: update.englishText, refId: update._id, at: d(w.date) });
   }
 
   await ActivityLog.insertMany(logs);

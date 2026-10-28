@@ -4,6 +4,8 @@ import { wrap } from '../utils/http.js';
 import * as auth from '../controllers/auth.js';
 import * as dash from '../controllers/dashboard.js';
 import * as projects from '../controllers/projects.js';
+import * as updates from '../controllers/updates.js';
+import { uploadPhoto } from '../middleware/upload.js';
 
 const router = Router();
 const officer = requireRole('officer');
@@ -22,5 +24,12 @@ router.get('/projects', wrap(projects.listProjects));
 router.get('/projects/:id', projectAccess(), wrap(projects.getProject));
 router.get('/projects/:id/updates', projectAccess(), wrap(projects.projectUpdates));
 router.get('/projects/:id/activity', officer, wrap(projects.projectActivity));
+
+const supervisor = requireRole('supervisor');
+
+router.post('/match/preview', supervisor, wrap(updates.preview));
+router.post('/updates', supervisor, uploadPhoto, wrap(updates.createUpdate));
+router.get('/updates/mine', supervisor, wrap(updates.myUpdates));
+router.get('/updates/review', officer, wrap(updates.reviewQueue));
 
 export default router;

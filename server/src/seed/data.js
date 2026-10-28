@@ -101,7 +101,7 @@ export const projects = [
     },
     supervisor: { name: 'Arjun Singh', email: 'watertank@anvyra.test', language: 'hi' },
     tasks: [
-      { name: 'Excavation', unit: 'cu m', plannedQty: 120, keywords: ['excavation', 'excavate', 'excavated', 'dig', 'digging', 'khudai', 'खुदाई', 'తవ్వకం'] },
+      { name: 'Excavation', unit: 'cu m', plannedQty: 120, keywords: ['excavation', 'excavate', 'excavated', 'dig', 'dug', 'digging', 'khudai', 'खुदाई', 'తవ్వకం'] },
       { name: 'Foundation concrete', unit: 'cu m', plannedQty: 60, keywords: ['foundation', 'concrete', 'pcc', 'raft', 'नींव', 'कंक्रीट', 'కాంక్రీట్'] },
       { name: 'Columns', unit: 'nos', plannedQty: 8, keywords: ['column', 'columns', 'pillar', 'pillars', 'कॉलम', 'కాలమ్', 'స్తంభం'] },
       { name: 'Tank slab and walls', unit: '%', plannedQty: 100, keywords: ['tank', 'container', 'tank slab', 'tanki', 'टंकी', 'ట్యాంక్'] },
@@ -258,4 +258,25 @@ export const projects = [
       { amount: 300000, date: '2026-10-22', note: 'Transformer' },
     ],
   },
+];
+
+// Updates still waiting for the officer. They are run through the matcher by seed.js
+// (with the English text below instead of a real translation), so the review queue is not empty.
+export const waitingUpdates = [
+  { project: 'Overhead Water Tank', date: '2026-10-27', lang: 'hi',
+    text: '2 कॉलम पूरे किए और 25 बोरी सीमेंट लगी',
+    english: 'Completed 2 columns and 25 bags of cement used' },
+  { project: 'Overhead Water Tank', date: '2026-10-28', lang: 'en',
+    text: 'Completed 6 columns' }, // 4 done + 6 is more than the 8 planned: over-planned check
+  { project: 'Government Houses', date: '2026-10-27', lang: 'hi',
+    text: '3 घरों में प्लास्टर पूरा हुआ, 90 बोरी सीमेंट लगी',
+    english: 'Plastering completed in 3 houses, 90 bags of cement used' }, // only 80 in stock: stock check
+  { project: 'Canal', date: '2026-10-27', lang: 'te',
+    text: 'కాలువ దగ్గర 100 మీటర్లు పని పూర్తి చేశాము',
+    english: 'Completed 100 metres of work near the canal' }, // vague: needs_check
+  { project: 'Canal', date: '2026-10-28', lang: 'en',
+    text: 'Excavated 150 metres of the canal near the fields' },
+  { project: 'Electric Lines', date: '2026-10-28', lang: 'te',
+    text: '15 స్తంభాలు వేశాము, 400 మీటర్ల వైర్ లాగాము',
+    english: 'Erected 15 poles and strung 400 metres of wire' },
 ];

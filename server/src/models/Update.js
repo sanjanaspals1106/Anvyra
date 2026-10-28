@@ -21,6 +21,8 @@ const itemSchema = new mongoose.Schema({
   quantity: { type: Number, required: true, min: 0 }, // final value (officer may edit)
   unit: { type: String, default: '' },
   matches: { type: [matchSchema], default: [] }, // top 3
+  matchStatus: { type: String, enum: ['matched', 'needs_check'], default: 'needs_check' }, // for this item
+  warnings: { type: [String], default: [] }, // checks shown to the officer
 });
 
 const updateSchema = new mongoose.Schema(
@@ -31,6 +33,9 @@ const updateSchema = new mongoose.Schema(
     originalText: { type: String, required: true },
     language: { type: String, enum: ['en', 'hi', 'te'], default: 'en' },
     englishText: { type: String, default: '' },
+    translationFailed: { type: Boolean, default: false }, // translation was needed but did not work
+    partsFound: { type: Number, default: 0 }, // how many parts the text was split into
+    warnings: { type: [String], default: [] }, // all checks of all items, for the review screen
     photoUrl: { type: String, default: '' },
     items: { type: [itemSchema], default: [] },
     matchStatus: { type: String, enum: ['matched', 'needs_check'], default: 'needs_check' },
