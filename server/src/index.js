@@ -18,7 +18,13 @@ app.use(errorHandler);
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const port = process.env.PORT || 5001;
-  await connectDB();
+  try {
+    await connectDB();
+  } catch (err) {
+    console.error(`\nCould not connect to MongoDB: ${err.message}`);
+    console.error('Check MONGODB_URI in server/.env and that your current IP address is allowed in Atlas > Network Access.');
+    process.exit(1);
+  }
   warmUp(); // load the AI model now so the first update is not slow
   app.listen(port, () => console.log(`ANVYRA API running on http://localhost:${port}`));
 }

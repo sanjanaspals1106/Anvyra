@@ -2,14 +2,16 @@
 // Translation is replaced by the stored English text, and the project data comes from the
 // demo data file, so this test needs no internet and no database.
 //   npm run test:matching            (tuning set, must reach 90%)
-//   npm run test:heldout             (held-out set, report only)
+//   npm run test:heldout             (held-out set 1, report only)
+//   npm run test:heldout2            (held-out set 2, report only)
 
 import { projects } from '../seed/data.js';
 import { matchUpdate } from './index.js';
 import { warmUp } from './embeddings.js';
 // Default: the tuning set. With --heldout: the separate held-out set (reported only, never used for tuning).
-const heldout = process.argv.includes('--heldout');
-const { cases } = await import(heldout ? './testcases-heldout.js' : './testcases.js');
+const heldout2 = process.argv.includes('--heldout2');
+const heldout = heldout2 || process.argv.includes('--heldout');
+const { cases } = await import(heldout2 ? './testcases-heldout-2.js' : heldout ? './testcases-heldout.js' : './testcases.js');
 
 const PASS_MARK = 90;
 
@@ -74,7 +76,7 @@ await warmUp();
 const main = await run({ native: false });
 console.table(main.rows);
 const accuracy = (main.pass / main.total) * 100;
-console.log(`\n${heldout ? 'HELD-OUT' : 'Tuning-set'} matching accuracy: ${main.pass}/${main.total} = ${accuracy.toFixed(1)}%${heldout ? "" : `  (needs ${PASS_MARK}%)`}`);
+console.log(`\n${heldout2 ? 'HELD-OUT-2' : heldout ? 'HELD-OUT-1' : 'Tuning-set'} matching accuracy: ${main.pass}/${main.total} = ${accuracy.toFixed(1)}%${heldout ? "" : `  (needs ${PASS_MARK}%)`}`);
 
 const native = await run({ native: true });
 console.log(`Without translation (Hindi/Telugu words only): ${native.pass}/${native.total} = ${((native.pass / native.total) * 100).toFixed(1)}%  (information only)`);

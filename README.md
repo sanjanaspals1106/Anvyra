@@ -70,17 +70,27 @@ Code: `server/src/matching/`. It is rule-based plus a small local AI model, so i
 7. **Decide**: `matched` if the best score is at least 0.60 and at least 0.10 ahead of the second, else `needs_check`.
    Tasks already at 100% are not chosen automatically.
 8. **Explain**: the top 3 candidates with scores and reasons are stored and shown to the officer.
+   A part that contains a quantity is never dropped: if nothing fits, it is kept as `needs_check` with the reason
+   "no matching task found" so the officer picks the task.
 9. **Checks** (warnings, never blocking): above planned quantity, more material used than in stock, unit missing.
 
-### Test result
+### Test results
 
-`cd server && npm run test:matching` runs 57 sample updates (all 4 projects, English/Hindi/Telugu, spelling mistakes,
-synonyms, two tasks in one sentence, material-only, meter vs metre, ambiguous, unrelated). Translation is replaced by the
-stored English text, so it runs offline without a database.
+Translation is replaced by the stored English text in all tests, so they run offline without a database.
 
-**Accuracy: 57 / 57 = 100%** (needs 90%). Honest note: the keywords and thresholds were tuned while writing this set, so it is
-not an independent test. Ten extra sentences written afterwards were all matched correctly by hand-check. Without any
-translation, the 13 Hindi/Telugu cases still find the right task/material 12 of 13 times (but are always `needs_check`).
+| Set | Command | Cases | Accuracy |
+|---|---|---|---|
+| Tuning set | `npm run test:matching` | 57 | **100%** |
+| Held-out set 1 | `npm run test:heldout` | 20 | **100%** (first run 85%, 3 failures) |
+| Held-out set 2 | `npm run test:heldout2` | 20 | **100%** (first and only run) |
+
+(run these inside `server/`). The **tuning set** is what the keywords, unit rules and scoring were adjusted against, so its score
+is optimistic. A **held-out set** is written afterwards and run once without changing any code. Held-out set 1 failed 3 of 20
+cases first (85%); those failures led to general fixes (every part with a quantity is kept for the officer, a "used" word applies
+to all materials in its sentence, task-name words and project-name words are handled fairly), so set 1 is no longer independent.
+Held-out set 2 was written after those fixes and is the fairest number, but 20 cases is a small sample: expect real-world
+accuracy lower than 100%, especially for long or unusual sentences. Without translation the Hindi/Telugu cases still find the
+right task/material about 90% of the time, but are always marked `needs_check`.
 
 ## Using translation
 

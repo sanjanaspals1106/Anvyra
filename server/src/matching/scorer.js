@@ -10,16 +10,27 @@ export const WEIGHTS = { meaning: 0.5, keywords: 0.3, unit: 0.2 };
 
 const isLatin = (s) => /^[\x00-\x7f]+$/.test(s);
 const words = (s) => s.match(/[a-z]+/g) || [];
+// "walls" and "wall" should count as the same word.
+const singular = (w) => (w.length > 4 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
+
+// Words from a candidate's own name that no other candidate's name has ("walls" in "Tank slab and walls").
+// They count as keywords too, because a supervisor often just says the name of the work.
+const FILLER = new Set(['with', 'from', 'work', 'works', 'done', 'upto']);
+function distinctiveNameWords(candidate, all) {
+  const wordsOf = (c) => new Set((c.name.toLowerCase().match(/[a-z]+/g) || []).filter((w) => w.length >= 4 && !FILLER.has(w)).map(singular));
+  const others = new Set(all.filter((c) => c !== candidate).flatMap((c) => [...wordsOf(c)]));
+  return [...wordsOf(candidate)].filter((w) => !others.has(w));
+}
 
 // Keyword hits for one candidate. Returns { score 0-1, hits: [keyword, ...] }.
 // English keywords use fuse.js so small spelling mistakes still count ("colums", "exavation").
 // Hindi/Telugu keywords are matched as plain text (with the word ending allowed to change).
 export function keywordScore(part, keywords) {
-  const tokens = words(part).map((w) => (w.length > 4 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w));
+  const tokens = words(part).map(singular);
   const grams = new Set(tokens);
   for (let i = 0; i < tokens.length - 1; i++) grams.add(`${tokens[i]} ${tokens[i + 1]}`);
 
-  const latinKeywords = [...new Set(keywords.filter(isLatin).map((k) => k.toLowerCase()))];
+  const latinKeywords = [...new Set(keywords.filter(isLatin).map((k) => (k.includes(' ') ? k.toLowerCase() : singular(k.toLowerCase()))))];
   const fuse = new Fuse(latinKeywords, { includeScore: true, threshold: 0.3, ignoreLocation: true });
 
   const strengths = new Map(); // keyword -> 0..1
@@ -85,9 +96,12 @@ export function meaningText(part, ignoreWords = [], unit = '') {
 }
 
 // What the part's meaning is compared with: the name, and the name plus English keywords.
-const targetTexts = (c) => {
-  const kws = c.keywords.filter(isLatin);
-  const name = c.name.toLowerCase();
+// Project-name words are removed here too, in the same way as from the part, so both sides are compared fairly.
+const targetTexts = (c, ignoreWords = []) => {
+  const ignore = new RegExp(`\\b(?:${ignoreWords.join('|') || '(?!)'})\\b`, 'g');
+  const clean = (s) => s.replace(ignore, ' ').replace(/\s+/g, ' ').trim();
+  const kws = c.keywords.filter(isLatin).map(clean).filter(Boolean);
+  const name = clean(c.name.toLowerCase()) || c.name.toLowerCase();
   return [name, kws.length ? `${name}: ${kws.join(', ')}` : name, ...kws];
 };
 
@@ -95,7 +109,7 @@ const targetTexts = (c) => {
 // Returns candidates sorted best first: { ref, name, score, reasons, parts }.
 export async function scoreCandidates(part, candidates, extracted, ignoreWords = []) {
   const text = meaningText(part, ignoreWords, extracted.unit) || part;
-  const lists = candidates.map(targetTexts);
+  const lists = candidates.map((c) => targetTexts(c, ignoreWords));
   const sims = await meaningScores(text, lists.flat());
   let at = 0;
   return candidates
@@ -103,7 +117,7 @@ export async function scoreCandidates(part, candidates, extracted, ignoreWords =
       const own = sims.slice(at, (at += lists[i].length));
       // name or name+keywords count fully; a single keyword counts a little less
       const meaning = Math.max(own[0], own[1], 0.85 * Math.max(0, ...own.slice(2)));
-      const kw = keywordScore(part, c.keywords);
+      const kw = keywordScore(part, [...c.keywords, ...distinctiveNameWords(c, candidates)]);
       const unit = unitFit(extracted.unit, c.unit);
       const score = WEIGHTS.meaning * meaning + WEIGHTS.keywords * kw.score + WEIGHTS.unit * unit;
       const reasons = [`meaning ${meaning.toFixed(2)}`];

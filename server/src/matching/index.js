@@ -36,21 +36,24 @@ export async function matchUpdate({ text, projectId, translate = translateToEngl
   const translationFailed = language !== 'en' && !tr.ok;
   const englishText = tr.text;
 
-  // 2. Normalise and 3. split into parts.
-  const rawParts = splitParts(normalise(englishText));
-
+  // 2. Normalise and 3. split into sentences (full stops) and then into parts (commas, "and", ...).
   // A part with no number ("fixed doors") belongs to the next part that has one ("windows in 2 houses").
+  // Every part remembers whether its sentence has a "use" word anywhere.
   const parts = [];
-  let pending = '';
-  for (const p of rawParts) {
-    if (/\d/.test(p)) {
-      parts.push(`${pending} ${p}`.trim());
-      pending = '';
-    } else {
-      pending = `${pending} ${p}`.trim();
+  for (const sentence of normalise(englishText).split(/\s*(?:\.(?=\s|$)|[;।])\s*/).filter(Boolean)) {
+    const raw = splitParts(sentence);
+    const sentenceUse = raw.some(hasUseWord);
+    let pending = '';
+    for (const p of raw) {
+      if (/\d/.test(p)) {
+        parts.push({ text: `${pending} ${p}`.trim(), sentenceUse });
+        pending = '';
+      } else {
+        pending = `${pending} ${p}`.trim();
+      }
     }
+    if (pending) parts.push({ text: pending, sentenceUse });
   }
-  if (pending) parts.push(pending);
 
   // Words of this project, used to repair spelling mistakes.
   const vocabulary = [...new Set([...ctx.tasks, ...ctx.materials].flatMap((c) =>
@@ -65,14 +68,17 @@ export async function matchUpdate({ text, projectId, translate = translateToEngl
 
   const items = [];
   const warnings = [];
-  let carryUse = false; // "used 180 bags cement and 1200 kg steel": the 2nd part is also "used"
 
-  for (const rawPart of parts) {
+  // A part that names a material but has its own work verb ("erected 20 poles") is work done, not material used.
+  const WORK_VERB = /\b(?:completed?|done|finished|built|laid|erected|installed|fixed|fitted|poured|cast|casting|dug|dig|excavated|put up|strung|lined|constructed|made|handed|gave|started)\b/;
+
+  for (const { text: rawPart, sentenceUse } of parts) {
     const { text: part, fixes } = fixSpelling(rawPart, vocabulary);
     const q = extractQuantity(part, { projectHasMeters });
     const ownUse = hasUseWord(part);
-    const useWord = ownUse || (carryUse && q.hasNumber);
-    carryUse = ownUse || (carryUse && q.hasNumber && !/\b(?:completed|done|built|laid|erected|installed|poured|dug)\b/.test(part));
+    // A "use" word anywhere in the sentence ("used 40 bags cement and 1200 kg steel",
+    // "10 cu m stone and 12 cu m sand used") applies to every material named in that sentence.
+    const useWord = ownUse || (sentenceUse && q.hasNumber && !WORK_VERB.test(part) && materialsNamed(part));
 
     // 5. Material item when a material is named with a "use" word; otherwise match tasks.
     const isMaterial = useWord && (materialsNamed(part) || q.hasNumber);
@@ -84,8 +90,10 @@ export async function matchUpdate({ text, projectId, translate = translateToEngl
     const open = ranked.filter((r) => isMaterial || r.ref.doneQty < r.ref.plannedQty);
     const finished = ranked.filter((r) => !open.includes(r));
     const anyKeyword = ranked.some((r) => r.keywordHit);
-    if (!anyKeyword && (ranked[0].score < THRESHOLDS.ignoreBelow || (!q.hasNumber && !isMaterial))) continue; // not about our work
+    // A part without a quantity and without any keyword is not about our work.
+    // A part WITH a quantity is never dropped: if nothing fits, the officer picks the task.
     if (!q.hasNumber && !anyKeyword) continue;
+    const noMatch = !anyKeyword && ranked[0].score < THRESHOLDS.ignoreBelow;
 
     // Part with no number that points at a task we already have: it only repeats ("excavation complete").
     const topRef = String(open[0]?.ref.id);
@@ -98,7 +106,10 @@ export async function matchUpdate({ text, projectId, translate = translateToEngl
       status = 'needs_check';
       winner = null;
     }
-    if (!q.hasNumber) status = 'needs_check';
+    if (!q.hasNumber || noMatch) {
+      status = 'needs_check';
+      winner = null;
+    }
 
     // 8. Explain: top 3 with scores and reasons.
     const top3 = ranked.slice(0, 3).map((r) => ({
@@ -119,10 +130,12 @@ export async function matchUpdate({ text, projectId, translate = translateToEngl
       matches: top3,
       warnings: [],
     };
+    if (noMatch) top3[0].reasons.push(`no matching ${isMaterial ? 'material' : 'task'} found`);
     if (fixes.length) top3[0].reasons.push(`spelling fixed: ${fixes.join(', ')}`);
     if (winner) item[isMaterial ? 'materialId' : 'taskId'] = winner.ref.id;
 
     // 9. Checks (they never block saving).
+    if (noMatch) item.warnings.push(`No matching ${isMaterial ? 'material' : 'task'} found. Please choose one.`);
     if (!q.hasNumber) item.warnings.push('No quantity found in this part.');
     else if (!q.hasUnit) item.warnings.push('No unit written, please check the quantity.');
     if (winner && q.hasNumber) {

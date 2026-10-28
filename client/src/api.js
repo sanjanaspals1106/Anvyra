@@ -34,6 +34,8 @@ api.interceptors.response.use(
 export function errorText(err, fallback = 'Something went wrong. Please try again.') {
   if (err?.response?.data?.error) return err.response.data.error;
   if (err?.code === 'ERR_NETWORK') return 'Cannot reach the server. Please check your connection.';
+  // The dev proxy answers 5xx with no message when the API is not running.
+  if (err?.response && err.response.status >= 500) return 'The ANVYRA server is not answering. Is it running (npm run dev) and connected to MongoDB?';
   return fallback;
 }
 
