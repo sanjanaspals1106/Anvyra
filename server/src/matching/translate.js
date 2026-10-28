@@ -1,6 +1,6 @@
 // Translation step. Kept small and swappable: providers are tried in this order,
 // and each one is used only if its key is set in .env:
-//   GROQ_API_KEY         -> Groq (Llama model, set GROQ_MODEL to change it)
+//   GROQ_API_KEY         -> Groq (set GROQ_MODEL to change the model)
 //   GEMINI_API_KEY       -> Google Gemini (free tier available)
 //   GOOGLE_TRANSLATE_KEY -> Google Cloud Translation
 // If no key is set, or every provider fails, we return the original text with ok:false.
@@ -26,7 +26,7 @@ async function viaGroq(text, lang) {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.GROQ_API_KEY}` },
     body: JSON.stringify({
-      model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+      model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
       temperature: 0,
       messages: [
         { role: 'system', content: INSTRUCTION(lang) },

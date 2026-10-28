@@ -95,7 +95,7 @@ right task/material about 90% of the time, but are always marked `needs_check`.
 ## Using translation
 
 Set one or more keys in `server/.env` and restart the API. Providers are tried in this order, and the next one is used
-if a call fails: **Groq** (`GROQ_API_KEY`, model from `GROQ_MODEL`, default `llama-3.3-70b-versatile`), then
+if a call fails: **Groq** (`GROQ_API_KEY`, model from `GROQ_MODEL`, default `openai/gpt-oss-120b`), then
 **Gemini** (`GEMINI_API_KEY`), then **Google Translate** (`GOOGLE_TRANSLATE_KEY`). Free keys: https://console.groq.com/keys
 and https://aistudio.google.com/apikey. If no key is set or all providers fail, the update keeps its original words and is
 marked "needs check".
