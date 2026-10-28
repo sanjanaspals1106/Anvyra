@@ -61,6 +61,17 @@ What the demo data shows (as of 28 Oct 2026):
 
 You can also open the database in **MongoDB Compass** (free desktop app) with the same connection string to see the collections.
 
+## Run the API
+
+```bash
+npm run dev            # API on http://localhost:5001 (port 5001, because macOS uses 5000)
+npm run test:matching  # matching accuracy test (offline)
+```
+
+The seed also creates 6 **waiting** updates (run through the real matcher) so the officer's review queue is not empty.
+Model additions: updates now keep `translationFailed`, `partsFound` and `warnings`, and each item keeps its own
+`matchStatus` and `warnings`.
+
 ## Collections
 
 | Collection | What it holds |
@@ -86,6 +97,9 @@ server/
 ├── package.json
 └── src/
     ├── config/db.js          connection
+    ├── index.js              Express app
+    ├── routes/ controllers/ middleware/   the API
+    ├── matching/             AI matching engine, testcases.js, run-tests.js
     ├── models/               9 Mongoose models
     ├── utils/progress.js     progress, stock, budget calculations
     └── seed/

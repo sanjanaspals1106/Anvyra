@@ -89,7 +89,7 @@ function BudgetChart({ projects }) {
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" vertical={false} />
-        <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
+        <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} tickFormatter={(n) => n.replace("Government ", "").replace("Overhead ", "").replace(" Lines", "")} />
         <YAxis unit="%" domain={[0, 100]} tick={{ fontSize: 12 }} />
         <Tooltip formatter={(v) => `${v}%`} />
         <Legend wrapperStyle={{ fontSize: 12 }} />
