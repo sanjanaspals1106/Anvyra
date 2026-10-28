@@ -248,7 +248,7 @@ export default function ReviewUpdates() {
   const { refresh } = useCounts();
   const [selected, setSelected] = useState(null);
 
-  const updates = queue.data?.updates || [];
+  const updates = useMemo(() => queue.data?.updates || [], [queue.data]);
   // Keep a valid selection: first item when the list changes.
   useEffect(() => {
     if (!updates.length) return setSelected(null);

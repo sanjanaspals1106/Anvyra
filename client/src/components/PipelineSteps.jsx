@@ -2,9 +2,9 @@ import { Check, Loader2, AlertTriangle, Circle } from 'lucide-react';
 
 // The 4-step AI pipeline: Translated -> Split into parts -> Matched -> Checks.
 // steps: [{ label, detail, state: 'done' | 'warn' | 'active' | 'pending' }]
-export default function PipelineSteps({ steps }) {
+export default function PipelineSteps({ steps, columns = 'sm:grid-cols-4' }) {
   return (
-    <ol className="grid gap-2 sm:grid-cols-4">
+    <ol className={`grid gap-2 ${columns}`}>
       {steps.map((s, i) => {
         const tone = {
           done: 'border-success/40 bg-success/10',
