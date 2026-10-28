@@ -1,7 +1,9 @@
-// Translation step. Kept small and swappable: pick a provider with an env var.
+// Translation step. Kept small and swappable: providers are tried in this order,
+// and each one is used only if its key is set in .env:
+//   GROQ_API_KEY         -> Groq (Llama model, set GROQ_MODEL to change it)
 //   GEMINI_API_KEY       -> Google Gemini (free tier available)
 //   GOOGLE_TRANSLATE_KEY -> Google Cloud Translation
-// With no key, or if the call fails, we return the original text with ok:false.
+// If no key is set, or every provider fails, we return the original text with ok:false.
 // The matcher still runs (native keywords work) but the update is flagged "needs_check".
 
 // Language is detected from the script the text is written in.
@@ -13,12 +15,35 @@ export function detectLanguage(text) {
 
 const LANGUAGE_NAMES = { hi: 'Hindi', te: 'Telugu' };
 
+const INSTRUCTION = (lang) =>
+  `Translate this ${LANGUAGE_NAMES[lang]} construction site report into English. ` +
+  'Reply with only the English translation, with no explanations or quotes. ' +
+  'Keep every number and unit exactly as written.';
+
+// Groq speaks the OpenAI chat format.
+async function viaGroq(text, lang) {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+    body: JSON.stringify({
+      model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+      temperature: 0,
+      messages: [
+        { role: 'system', content: INSTRUCTION(lang) },
+        { role: 'user', content: text },
+      ],
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`Groq returned ${res.status}`);
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim();
+}
+
 async function viaGemini(text, lang) {
   const model = process.env.GEMINI_MODEL || 'gemini-flash-latest';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-  const prompt =
-    `Translate this ${LANGUAGE_NAMES[lang]} construction site report into plain English. ` +
-    `Keep every number and unit exactly. Reply with the translation only.\n\n${text}`;
+  const prompt = `${INSTRUCTION(lang)}\n\n${text}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
@@ -46,14 +71,19 @@ async function viaGoogleTranslate(text, lang) {
 // Returns { text, ok }. Never throws.
 export async function translateToEnglish(text, lang) {
   if (lang === 'en') return { text, ok: true };
-  try {
-    let out;
-    if (process.env.GEMINI_API_KEY) out = await viaGemini(text, lang);
-    else if (process.env.GOOGLE_TRANSLATE_KEY) out = await viaGoogleTranslate(text, lang);
-    else return { text, ok: false };
-    return out ? { text: out, ok: true } : { text, ok: false };
-  } catch (err) {
-    console.error('Translation failed:', err.message);
-    return { text, ok: false };
+  const providers = [
+    [process.env.GROQ_API_KEY, 'Groq', viaGroq],
+    [process.env.GEMINI_API_KEY, 'Gemini', viaGemini],
+    [process.env.GOOGLE_TRANSLATE_KEY, 'Google Translate', viaGoogleTranslate],
+  ];
+  for (const [key, name, run] of providers) {
+    if (!key) continue;
+    try {
+      const out = await run(text, lang);
+      if (out) return { text: out, ok: true };
+    } catch (err) {
+      console.error(`${name} translation failed:`, err.message); // try the next provider
+    }
   }
+  return { text, ok: false };
 }

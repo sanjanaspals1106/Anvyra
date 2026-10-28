@@ -38,7 +38,8 @@ The API uses port **5001** because macOS uses 5000 for AirPlay.
 | `MONGODB_URI` | MongoDB connection string (required) |
 | `JWT_SECRET` | Secret for login tokens (set your own) |
 | `PORT` | API port, default 5001 |
-| `GEMINI_API_KEY` | Translate Hindi/Telugu with Gemini (optional) |
+| `GROQ_API_KEY`, `GROQ_MODEL` | Translate Hindi/Telugu with Groq, tried first (optional) |
+| `GEMINI_API_KEY` | Fallback translation with Gemini (optional) |
 | `GOOGLE_TRANSLATE_KEY` | Or translate with Google Cloud Translation (optional) |
 
 ### Demo logins (password `password123`)
@@ -83,9 +84,11 @@ translation, the 13 Hindi/Telugu cases still find the right task/material 12 of 
 
 ## Using translation
 
-Get a free Gemini key at https://aistudio.google.com/apikey, put it in `server/.env` as `GEMINI_API_KEY=...`, restart the API.
-Hindi/Telugu updates are then translated and can match with high scores. **Not tested with a live key in this build**:
-the code path exists but only the "no key" fallback was run.
+Set one or more keys in `server/.env` and restart the API. Providers are tried in this order, and the next one is used
+if a call fails: **Groq** (`GROQ_API_KEY`, model from `GROQ_MODEL`, default `llama-3.3-70b-versatile`), then
+**Gemini** (`GEMINI_API_KEY`), then **Google Translate** (`GOOGLE_TRANSLATE_KEY`). Free keys: https://console.groq.com/keys
+and https://aistudio.google.com/apikey. If no key is set or all providers fail, the update keeps its original words and is
+marked "needs check".
 
 ## Folder structure
 
