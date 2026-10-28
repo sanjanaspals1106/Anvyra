@@ -3,4 +3,5 @@ node_modules/
 .env.local
 dist/
 server/uploads/*
+!server/uploads/.gitkeep
 .DS_Store
