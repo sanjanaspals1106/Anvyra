@@ -33,10 +33,9 @@ const linkClass = ({ isActive }) =>
     isActive ? 'bg-primary text-white shadow' : 'text-ink/80 hover:bg-primary/10'
   }`;
 
-function titleFor(pathname, t) {
+function titleFor(pathname, t, nav) {
   if (pathname.startsWith('/projects/')) return t('nav.projectDetails');
-  const all = [...OFFICER_NAV, ...SUPERVISOR_NAV];
-  const hit = [...all].reverse().find((n) => (n.end ? pathname === n.to : pathname.startsWith(n.to)));
+  const hit = [...nav].reverse().find((n) => (n.end ? pathname === n.to : pathname.startsWith(n.to)));
   return hit ? t(hit.key) : 'ANVYRA';
 }
 
@@ -130,7 +129,7 @@ export default function AppShell() {
             </button>
             <div className="glass flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-2.5">
               <div className="min-w-0">
-                <p className="truncate text-lg font-extrabold leading-tight">{titleFor(pathname, t)}</p>
+                <p className="truncate text-lg font-extrabold leading-tight">{titleFor(pathname, t, nav)}</p>
                 {!isOfficer && <ProjectName />}
               </div>
               <div className="flex shrink-0 items-center gap-3">

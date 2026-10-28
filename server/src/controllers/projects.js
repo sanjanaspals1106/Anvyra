@@ -2,6 +2,7 @@ import { Project, Update, Issue, ActivityLog } from '../models/index.js';
 import {
   getProjectSummary, getTaskProgress, getMaterialStock, getBudget, getPlannedPercent,
 } from '../utils/progress.js';
+import { addItemNames } from '../utils/names.js';
 import { httpError, checkId } from '../utils/http.js';
 
 // GET /api/projects - officer: all projects, supervisor: only their own
@@ -41,7 +42,7 @@ export async function projectUpdates(req, res) {
     filter.status = req.query.status;
   }
   const updates = await Update.find(filter).sort({ workDate: -1, createdAt: -1 }).populate('supervisorId', 'name').lean();
-  res.json({ updates });
+  res.json({ updates: await addItemNames(updates) });
 }
 
 // GET /api/projects/:id/activity - officer only

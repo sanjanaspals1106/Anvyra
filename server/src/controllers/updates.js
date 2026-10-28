@@ -1,6 +1,7 @@
 import { Update, Task, Material } from '../models/index.js';
 import { getTaskProgress } from '../utils/progress.js';
 import { matchUpdate } from '../matching/index.js';
+import { addItemNames } from '../utils/names.js';
 import { logActivity } from '../utils/activity.js';
 import { httpError, checkId } from '../utils/http.js';
 
@@ -13,7 +14,7 @@ const cleanText = (value) => {
   return text;
 };
 
-// Name of the task or material an item was matched to (or null while it still needs a check).
+// Name of the task or material an item of a fresh match points to (null while it needs a check).
 const withName = (item) => {
   const id = String(item.taskId || item.materialId || '');
   const hit = item.matches.find((m) => String(m.refId) === id);
@@ -62,7 +63,7 @@ export async function createUpdate(req, res) {
 // GET /api/updates/mine - the supervisor's own updates with status and officer comment
 export async function myUpdates(req, res) {
   const updates = await Update.find({ supervisorId: req.user._id }).sort({ workDate: -1, createdAt: -1 }).lean();
-  res.json({ updates: updates.map((u) => ({ ...u, items: u.items.map(withName) })) });
+  res.json({ updates: await addItemNames(updates) });
 }
 
 // GET /api/updates/review?status=waiting - officer's queue: needs_check first, then oldest first
@@ -78,7 +79,7 @@ export async function reviewQueue(req, res) {
     const rank = (u) => (u.matchStatus === 'needs_check' ? 0 : 1);
     return rank(a) - rank(b) || new Date(a.createdAt) - new Date(b.createdAt);
   });
-  res.json({ updates: updates.map((u) => ({ ...u, items: u.items.map(withName) })) });
+  res.json({ updates: await addItemNames(updates) });
 }
 
 // ---------------------------------------------------------------- Officer review
