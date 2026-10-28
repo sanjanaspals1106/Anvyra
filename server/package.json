@@ -1,0 +1,16 @@
+{
+  "name": "anvyra-server",
+  "version": "1.0.0",
+  "description": "ANVYRA - village infrastructure monitoring (backend)",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "seed": "node src/seed/seed.js",
+    "db:check": "node src/seed/check.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "mongoose": "^8.8.0"
+  }
+}
