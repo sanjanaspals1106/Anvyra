@@ -83,6 +83,7 @@ Translation is replaced by the stored English text in all tests, so they run off
 | Tuning set | `npm run test:matching` | 57 | **100%** |
 | Held-out set 1 | `npm run test:heldout` | 20 | **100%** (first run 85%, 3 failures) |
 | Held-out set 2 | `npm run test:heldout2` | 20 | **100%** (first and only run) |
+| Live translation | `npm run test:translate` | 6 | **6/6** with Groq `openai/gpt-oss-120b` (needs the key; not part of the offline tests) |
 
 (run these inside `server/`). The **tuning set** is what the keywords, unit rules and scoring were adjusted against, so its score
 is optimistic. A **held-out set** is written afterwards and run once without changing any code. Held-out set 1 failed 3 of 20
@@ -99,6 +100,12 @@ if a call fails: **Groq** (`GROQ_API_KEY`, model from `GROQ_MODEL`, default `ope
 **Gemini** (`GEMINI_API_KEY`), then **Google Translate** (`GOOGLE_TRANSLATE_KEY`). Free keys: https://console.groq.com/keys
 and https://aistudio.google.com/apikey. If no key is set or all providers fail, the update keeps its original words and is
 marked "needs check".
+
+Each translation request also carries a glossary: the project type and the names of its tasks and materials, read from the
+database for that update (nothing is cached). The model is told to prefer these terms when a word has several meanings, which
+is how the Telugu word for "poles" becomes *pole erection* in an Electric Lines project instead of "columns". Numbers and units
+are still kept exactly as written. `npm run test:translate` (inside `server/`) sends 6 Hindi and Telugu samples through the
+real provider and checks the matched items.
 
 ## Folder structure
 

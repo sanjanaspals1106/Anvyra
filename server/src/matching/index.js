@@ -8,6 +8,7 @@ import { detectLanguage, translateToEnglish } from './translate.js';
 import { normalise, splitParts, extractQuantity, hasUseWord } from './parser.js';
 import { scoreCandidates, keywordScore, fixSpelling } from './scorer.js';
 import { loadContext } from './context.js';
+import { glossaryFor } from './translate.js';
 
 export const THRESHOLDS = {
   minScore: 0.6, // top candidate must score at least this ...
@@ -32,7 +33,7 @@ export async function matchUpdate({ text, projectId, translate = translateToEngl
   const language = detectLanguage(text);
 
   // 1. Translate. If it fails we keep the original and force needs_check.
-  const tr = await translate(text, language);
+  const tr = await translate(text, language, glossaryFor(ctx));
   const translationFailed = language !== 'en' && !tr.ok;
   const englishText = tr.text;
 

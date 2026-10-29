@@ -11,6 +11,7 @@
     "dev": "node --watch src/index.js",
     "test:matching": "node src/matching/run-tests.js",
     "test:heldout": "node src/matching/run-tests.js --heldout",
+    "test:translate": "node src/matching/test-translate.js",
     "test:heldout2": "node src/matching/run-tests.js --heldout2"
   },
   "dependencies": {

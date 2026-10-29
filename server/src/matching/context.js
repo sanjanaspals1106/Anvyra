@@ -5,7 +5,7 @@ import { getTaskProgress, getMaterialStock } from '../utils/progress.js';
 // its tasks (with how much is done) and its materials (with current stock).
 export async function loadContext(projectId) {
   const [project, tasks, materials, progress, stock] = await Promise.all([
-    Project.findById(projectId).select('name').lean(),
+    Project.findById(projectId).select('name type').lean(),
     Task.find({ projectId }).sort('order').lean(),
     Material.find({ projectId }).lean(),
     getTaskProgress(projectId),
@@ -15,6 +15,7 @@ export async function loadContext(projectId) {
   const left = Object.fromEntries(stock.map((s) => [String(s.materialId), s.stock]));
   return {
     projectName: project?.name || '',
+    projectType: project?.type || '',
     tasks: tasks.map((t) => ({
       id: t._id, name: t.name, unit: t.unit, plannedQty: t.plannedQty,
       keywords: t.keywords, doneQty: done[String(t._id)] || 0,

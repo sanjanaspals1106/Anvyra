@@ -15,13 +15,30 @@ export function detectLanguage(text) {
 
 const LANGUAGE_NAMES = { hi: 'Hindi', te: 'Telugu' };
 
-const INSTRUCTION = (lang) =>
-  `Translate this ${LANGUAGE_NAMES[lang]} construction site report into English. ` +
-  'Reply with only the English translation, with no explanations or quotes. ' +
-  'Keep every number and unit exactly as written.';
+const PROJECT_KINDS = { housing: 'Housing', water_tank: 'Water Tank', canal: 'Canal', electricity: 'Electric Lines' };
+
+// The project's own task and material names, read fresh from the database for every update.
+export function glossaryFor(ctx) {
+  const terms = [...ctx.tasks, ...ctx.materials].map((x) => x.name);
+  return { kind: PROJECT_KINDS[ctx.projectType] || ctx.projectName || '', terms };
+}
+
+const INSTRUCTION = (lang, glossary) => {
+  let prompt =
+    `Translate this ${LANGUAGE_NAMES[lang]} construction site report into English. ` +
+    'Reply with only the English translation, with no explanations or quotes. ' +
+    'Keep every number and unit exactly as written.';
+  if (glossary?.terms?.length) {
+    prompt +=
+      ` This update is from ${glossary.kind ? `a ${glossary.kind} project` : 'a project'}. ` +
+      `Use these terms where they fit: ${glossary.terms.join(', ')}. ` +
+      'When a word could mean several things, prefer the glossary term that suits this project.';
+  }
+  return prompt;
+};
 
 // Groq speaks the OpenAI chat format.
-async function viaGroq(text, lang) {
+async function viaGroq(text, lang, glossary) {
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.GROQ_API_KEY}` },
@@ -29,7 +46,7 @@ async function viaGroq(text, lang) {
       model: process.env.GROQ_MODEL || 'openai/gpt-oss-120b',
       temperature: 0,
       messages: [
-        { role: 'system', content: INSTRUCTION(lang) },
+        { role: 'system', content: INSTRUCTION(lang, glossary) },
         { role: 'user', content: text },
       ],
     }),
@@ -40,10 +57,10 @@ async function viaGroq(text, lang) {
   return data.choices?.[0]?.message?.content?.trim();
 }
 
-async function viaGemini(text, lang) {
+async function viaGemini(text, lang, glossary) {
   const model = process.env.GEMINI_MODEL || 'gemini-flash-latest';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-  const prompt = `${INSTRUCTION(lang)}\n\n${text}`;
+  const prompt = `${INSTRUCTION(lang, glossary)}\n\n${text}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
@@ -69,7 +86,7 @@ async function viaGoogleTranslate(text, lang) {
 }
 
 // Returns { text, ok }. Never throws.
-export async function translateToEnglish(text, lang) {
+export async function translateToEnglish(text, lang, glossary = null) {
   if (lang === 'en') return { text, ok: true };
   const providers = [
     [process.env.GROQ_API_KEY, 'Groq', viaGroq],
@@ -79,7 +96,7 @@ export async function translateToEnglish(text, lang) {
   for (const [key, name, run] of providers) {
     if (!key) continue;
     try {
-      const out = await run(text, lang);
+      const out = await run(text, lang, glossary);
       if (out) return { text: out, ok: true };
     } catch (err) {
       console.error(`${name} translation failed:`, err.message); // try the next provider
