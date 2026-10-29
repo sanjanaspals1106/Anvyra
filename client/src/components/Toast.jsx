@@ -17,7 +17,7 @@ export function ToastProvider({ children }) {
       {children}
       <div className="pointer-events-none fixed bottom-4 right-4 left-4 z-50 flex flex-col items-end gap-2 sm:left-auto" aria-live="polite">
         {items.map((i) => (
-          <div key={i.id} className="pop-in pointer-events-auto flex max-w-sm items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold shadow-xl ring-1 ring-black/5">
+          <div key={i.id} className="pop-in pointer-events-auto flex max-w-sm items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium shadow-lg">
             {i.type === 'error' ? <XCircle className="h-5 w-5 shrink-0 text-danger" /> : <CheckCircle2 className="h-5 w-5 shrink-0 text-success" />}
             {i.message}
           </div>

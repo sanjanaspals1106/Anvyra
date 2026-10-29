@@ -7,6 +7,7 @@ import { useToast } from '../../components/Toast';
 import { Badge, Button, Card, Field, inputClass, PageHeader } from '../../components/ui';
 import PipelineSteps from '../../components/PipelineSteps';
 import { num, toInputDate } from '../../utils/format';
+import { L, unitName } from '../../utils/l10n';
 
 const MAX = 1000;
 const SPEECH_LANG = { hi: 'hi-IN', te: 'te-IN', en: 'en-IN' };
@@ -15,9 +16,9 @@ const SpeechRecognition = typeof window !== 'undefined' ? window.SpeechRecogniti
 // "Columns – 2 nos (91%)" or "Cement used – 40 bags (98%)"
 function understoodLine(it, t) {
   const best = it.matches[0];
-  const name = it.matchedName || best?.name || '?';
+  const name = L(it.matchedName || best?.name || '?');
   const label = it.kind === 'material' ? t('send.used', { name }) : name;
-  const qty = `${num(it.quantity)}${it.unit ? ` ${it.unit}` : ''}`;
+  const qty = `${num(it.quantity)}${it.unit ? ` ${unitName(it.unit)}` : ''}`;
   return { label: `${label} – ${qty}`, score: Math.round((best?.score || 0) * 100), sure: it.matchStatus === 'matched' };
 }
 
@@ -138,7 +139,7 @@ export default function SendUpdate() {
                 </button>
               )}
             </div>
-            <div className="mt-1 flex justify-between text-xs font-semibold text-ink/55">
+            <div className="mt-1 flex justify-between text-xs font-semibold text-mute">
               <span>{listening ? t('send.listening') : ''}</span><span>{text.length} / {MAX}</span>
             </div>
           </Field>
@@ -148,7 +149,7 @@ export default function SendUpdate() {
               <input type="date" max={toInputDate()} className={inputClass} value={workDate} onChange={(e) => setWorkDate(e.target.value)} disabled={sending} />
             </Field>
             <div>
-              <span className="mb-1 block text-sm font-bold text-ink/80">{t('send.photo')}</span>
+              <span className="mb-1 block text-sm font-medium text-slate-700">{t('send.photo')}</span>
               <input ref={fileInput} type="file" accept="image/*" className="hidden" onChange={(e) => setPhoto(e.target.files[0] || null)} />
               {photo ? (
                 <div className="flex items-center gap-2">
@@ -161,7 +162,7 @@ export default function SendUpdate() {
             </div>
           </div>
 
-          {error && <p role="alert" className="rounded-xl bg-danger/10 px-3 py-2 text-sm font-bold text-danger">{error}</p>}
+          {error && <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{error}</p>}
           <Button type="submit" busy={sending} className="w-full !py-3.5 text-base">
             <Send className="h-5 w-5" />{sending ? t('send.sending') : t('send.submit')}
           </Button>
@@ -169,27 +170,27 @@ export default function SendUpdate() {
 
         <div className="space-y-4">
           <Card>
-            <h3 className="mb-2 flex items-center gap-2 text-lg font-extrabold"><Sparkles className="h-5 w-5 text-accent" />{t('send.preview')}</h3>
+            <h3 className="mb-2 flex items-center gap-2 text-lg font-semibold"><Sparkles className="h-5 w-5 text-accent" />{t('send.preview')}</h3>
             {!text.trim() ? (
-              <p className="text-sm font-semibold text-ink/55">{t('send.placeholder')}</p>
+              <p className="text-sm font-semibold text-mute">{t('send.placeholder')}</p>
             ) : checking && !preview ? (
-              <p className="text-sm font-semibold text-ink/60">{t('send.writing')}</p>
+              <p className="text-sm font-semibold text-mute">{t('send.writing')}</p>
             ) : preview ? (
-              items.length === 0 ? <p className="text-sm font-bold text-amber-700">{t('send.nothing')}</p> : (
+              items.length === 0 ? <p className="text-sm font-medium text-warning">{t('send.nothing')}</p> : (
                 <>
-                  <p className="mb-2 text-sm font-extrabold text-ink/70">{t('send.understood')}:</p>
+                  <p className="mb-2 text-sm font-semibold text-mute">{t('send.understood')}:</p>
                   <ul className="space-y-1.5">
                     {items.map((it, i) => {
                       const l = understoodLine(it, t);
                       return (
-                        <li key={i} className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-base font-extrabold ${l.sure ? 'bg-success/10' : 'bg-warning/15'}`}>
+                        <li key={i} className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-base font-semibold ${l.sure ? 'bg-success/10' : 'bg-warning/15'}`}>
                           <span>{l.label}</span>
                           <Badge tone={l.sure ? 'green' : 'amber'}>{l.sure ? `${l.score}%` : t('send.notSure')}</Badge>
                         </li>
                       );
                     })}
                   </ul>
-                  {needCheck > 0 && <p className="mt-2 text-xs font-bold text-amber-700">{t('send.checkNote')}</p>}
+                  {needCheck > 0 && <p className="mt-2 text-xs font-medium text-warning">{t('send.checkNote')}</p>}
                 </>
               )
             ) : null}

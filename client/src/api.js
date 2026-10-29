@@ -1,4 +1,6 @@
 import axios from 'axios';
+import i18n from './i18n';
+import { messageForError } from './utils/l10n';
 
 const TOKEN_KEY = 'anvyra.token';
 
@@ -30,12 +32,12 @@ api.interceptors.response.use(
   }
 );
 
-// Friendly message from an API error.
-export function errorText(err, fallback = 'Something went wrong. Please try again.') {
-  if (err?.response?.data?.error) return err.response.data.error;
-  if (err?.code === 'ERR_NETWORK') return 'Cannot reach the server. Please check your connection.';
+// Friendly message from an API error, in the chosen language.
+export function errorText(err, fallback = i18n.t('errors.generic')) {
+  if (err?.response?.data?.error) return messageForError(err.response.data, fallback);
+  if (err?.code === 'ERR_NETWORK') return i18n.t('errors.network');
   // The dev proxy answers 5xx with no message when the API is not running.
-  if (err?.response && err.response.status >= 500) return 'The ANVYRA server is not answering. Is it running (npm run dev) and connected to MongoDB?';
+  if (err?.response && err.response.status >= 500) return i18n.t('errors.serverDown');
   return fallback;
 }
 

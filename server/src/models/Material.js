@@ -6,6 +6,8 @@ const materialSchema = new mongoose.Schema(
   {
     projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true, index: true },
     name: { type: String, required: true, trim: true },
+    nameHi: { type: String, default: '', trim: true }, // shown in Hindi / Telugu; the matcher only uses `name`
+    nameTe: { type: String, default: '', trim: true },
     unit: { type: String, required: true }, // bags, kg, nos, m, cu m
     keywords: { type: [String], default: [] },
     lowStockLevel: { type: Number, default: 0 },

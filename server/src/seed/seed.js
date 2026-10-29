@@ -10,6 +10,7 @@ import {
 } from '../models/index.js';
 import { VILLAGE, DEMO_PASSWORD, officer, projects, waitingUpdates } from './data.js';
 import { matchUpdate } from '../matching/index.js';
+import { withNames, projectNames, projectDescriptions, taskNames, materialNames } from './translations.js';
 
 const d = (s) => new Date(`${s}T10:00:00+05:30`); // dates in Indian time
 const nextDay = (s) => new Date(d(s).getTime() + 24 * 60 * 60 * 1000);
@@ -30,7 +31,7 @@ export async function seed() {
   for (const p of projects) {
     // 2. Project and its supervisor
     const project = await Project.create({
-      ...p.project,
+      ...withNames(p.project, projectNames, projectDescriptions),
       village: VILLAGE,
       startDate: d(p.project.startDate),
       endDate: d(p.project.endDate),
@@ -47,8 +48,8 @@ export async function seed() {
       details: `${supervisor.name} added as supervisor`, refId: supervisor._id, at: d(p.project.startDate) });
 
     // 3. Tasks and materials (keep name -> id lookups for the updates)
-    const tasks = await Task.insertMany(p.tasks.map((t, i) => ({ ...t, projectId: project._id, order: i + 1 })));
-    const materials = await Material.insertMany(p.materials.map((m) => ({ ...m, projectId: project._id })));
+    const tasks = await Task.insertMany(p.tasks.map((t, i) => ({ ...withNames(t, taskNames), projectId: project._id, order: i + 1 })));
+    const materials = await Material.insertMany(p.materials.map((m) => ({ ...withNames(m, materialNames), projectId: project._id })));
     const taskByName = Object.fromEntries(tasks.map((t) => [t.name, t]));
     const matByName = Object.fromEntries(materials.map((m) => [m.name, m]));
     const findTask = (name) => {

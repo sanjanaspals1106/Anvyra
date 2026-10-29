@@ -8,13 +8,13 @@ const money = (n) => `Rs ${Number(n).toLocaleString('en-IN')}`;
 
 function parseDate(value, label = 'date') {
   const d = value ? new Date(value) : new Date();
-  if (Number.isNaN(d.getTime())) throw httpError(400, `That ${label} is not valid.`);
+  if (Number.isNaN(d.getTime())) throw httpError(400, `That ${label} is not valid.`, 'INVALID_DATE', { what: label });
   return d;
 }
 
 function positive(value, label) {
   const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) throw httpError(400, `${label} must be a number above zero.`);
+  if (!Number.isFinite(n) || n <= 0) throw httpError(400, `${label} must be a number above zero.`, 'NUMBER_POSITIVE', { what: label });
   return n;
 }
 
@@ -30,7 +30,7 @@ export async function listReceipts(req, res) {
 // POST /api/projects/:id/receipts { materialId, quantity, date?, note? } - supervisor
 export async function addReceipt(req, res) {
   const material = await Material.findOne({ _id: checkId(req.body.materialId, 'material'), projectId: req.params.id });
-  if (!material) throw httpError(400, 'That material is not part of this project.');
+  if (!material) throw httpError(400, 'That material is not part of this project.', 'MATERIAL_NOT_IN_PROJECT');
   const receipt = await MaterialReceipt.create({
     projectId: req.params.id,
     materialId: material._id,
@@ -62,7 +62,7 @@ export async function allIssues(req, res) {
   const filter = {};
   if (req.query.projectId) filter.projectId = checkId(req.query.projectId, 'project id');
   if (req.query.status) {
-    if (!['open', 'resolved'].includes(req.query.status)) throw httpError(400, 'Unknown status.');
+    if (!['open', 'resolved'].includes(req.query.status)) throw httpError(400, 'Unknown status.', 'UNKNOWN_STATUS');
     filter.status = req.query.status;
   }
   const issues = await Issue.find(filter).sort({ raisedAt: -1 })
@@ -74,8 +74,8 @@ export async function allIssues(req, res) {
 export async function addIssue(req, res) {
   const { type } = req.body;
   const description = String(req.body.description || '').trim();
-  if (!ISSUE_TYPES.includes(type)) throw httpError(400, `Issue type must be one of: ${ISSUE_TYPES.join(', ')}.`);
-  if (!description) throw httpError(400, 'Please describe the problem.');
+  if (!ISSUE_TYPES.includes(type)) throw httpError(400, `Issue type must be one of: ${ISSUE_TYPES.join(', ')}.`, 'ISSUE_TYPE_INVALID', { types: ISSUE_TYPES.join(', ') });
+  if (!description) throw httpError(400, 'Please describe the problem.', 'ISSUE_DESCRIPTION_REQUIRED');
   const issue = await Issue.create({
     projectId: req.params.id, type, description,
     photoUrl: req.file ? `/uploads/${req.file.filename}` : '',
@@ -91,13 +91,13 @@ export async function addIssue(req, res) {
 // PATCH /api/issues/:id/resolve { note } - officer
 export async function resolveIssue(req, res) {
   const note = String(req.body.note || '').trim();
-  if (!note) throw httpError(400, 'Please write a note about how it was resolved.');
+  if (!note) throw httpError(400, 'Please write a note about how it was resolved.', 'RESOLVE_NOTE_REQUIRED');
   const issue = await Issue.findOneAndUpdate(
     { _id: checkId(req.params.id), status: 'open' },
     { $set: { status: 'resolved', resolutionNote: note, resolvedBy: req.user._id, resolvedAt: new Date() } },
     { new: true }
   );
-  if (!issue) throw httpError(409, 'This issue does not exist or is already resolved.');
+  if (!issue) throw httpError(409, 'This issue does not exist or is already resolved.', 'ISSUE_ALREADY_RESOLVED');
   await logActivity({
     projectId: issue.projectId, userId: req.user._id, action: 'issue_resolved', details: note, refId: issue._id,
   });
@@ -113,7 +113,7 @@ export async function listExpenses(req, res) {
 
 // POST /api/projects/:id/expenses { amount, date?, note? }
 export async function addExpense(req, res) {
-  if (!(await Project.exists({ _id: checkId(req.params.id) }))) throw httpError(404, 'Project not found.');
+  if (!(await Project.exists({ _id: checkId(req.params.id) }))) throw httpError(404, 'Project not found.', 'PROJECT_NOT_FOUND');
   const expense = await Expense.create({
     projectId: req.params.id,
     amount: positive(req.body.amount, 'Amount'),
@@ -146,23 +146,23 @@ export async function listSupervisors(_req, res) {
 // the database, so their past updates and activity log entries still show their name.
 export async function changeSupervisor(req, res) {
   const project = await Project.findById(checkId(req.params.id));
-  if (!project) throw httpError(404, 'Project not found.');
+  if (!project) throw httpError(404, 'Project not found.', 'PROJECT_NOT_FOUND');
 
   let next;
   if (req.body.supervisorId) {
     next = await User.findOne({ _id: checkId(req.body.supervisorId, 'supervisor'), role: 'supervisor' });
-    if (!next) throw httpError(400, 'That supervisor does not exist.');
-    if (next.active !== false) throw httpError(400, 'That supervisor is already working on a project.');
+    if (!next) throw httpError(400, 'That supervisor does not exist.', 'SUPERVISOR_NOT_FOUND');
+    if (next.active !== false) throw httpError(400, 'That supervisor is already working on a project.', 'SUPERVISOR_BUSY');
   } else {
     const name = String(req.body.name || '').trim();
     const email = String(req.body.email || '').trim().toLowerCase();
     const password = String(req.body.password || '');
     const language = req.body.language || 'en';
-    if (!name) throw httpError(400, 'Please enter the name.');
-    if (!/^\S+@\S+\.\S+$/.test(email)) throw httpError(400, 'Please enter a valid email.');
-    if (password.length < 6) throw httpError(400, 'The password must have at least 6 characters.');
-    if (!['en', 'hi', 'te'].includes(language)) throw httpError(400, 'Unknown language.');
-    if (await User.exists({ email })) throw httpError(409, 'Someone already uses this email.');
+    if (!name) throw httpError(400, 'Please enter the name.', 'NAME_REQUIRED');
+    if (!/^\S+@\S+\.\S+$/.test(email)) throw httpError(400, 'Please enter a valid email.', 'EMAIL_INVALID');
+    if (password.length < 6) throw httpError(400, 'The password must have at least 6 characters.', 'PASSWORD_SHORT');
+    if (!['en', 'hi', 'te'].includes(language)) throw httpError(400, 'Unknown language.', 'UNKNOWN_LANGUAGE');
+    if (await User.exists({ email })) throw httpError(409, 'Someone already uses this email.', 'EMAIL_IN_USE');
     next = new User({ name, email, language, role: 'supervisor', passwordHash: await bcrypt.hash(password, 10) });
   }
 

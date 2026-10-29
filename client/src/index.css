@@ -1,47 +1,54 @@
 @import "tailwindcss";
 
-/* Colour tokens: sky blue, grass green, path ochre; red only for delays, low stock and open issues. */
+/* Calm palette taken from the village scene: slate-teal, muted ochre, sage, brick. */
 @theme {
-  --font-sans: "Nunito", "Noto Sans Devanagari", "Noto Sans Telugu", system-ui, sans-serif;
-  --color-primary: #0e8fc6;
-  --color-primary-dark: #0b73a0;
-  --color-success: #2e9e44;
-  --color-accent: #d9a441;
-  --color-warning: #e8a317;
-  --color-danger: #d93f3f;
-  --color-ink: #1f2937;
+  --font-sans: "Plus Jakarta Sans", "Noto Sans Devanagari", "Noto Sans Telugu", system-ui, sans-serif;
+  --color-primary: #2f5d62;
+  --color-primary-dark: #234a4e;
+  --color-success: #5b8466;
+  --color-accent: #c79a4b;
+  --color-warning: #b9842f;
+  --color-danger: #a4473d;
+  --color-ink: #1e293b; /* slate-800 */
+  --color-mute: #64748b; /* slate-500 */
+  --color-line: #e2e8f0; /* slate-200 */
 }
 
 html, body, #root { min-height: 100%; }
 body {
   font-family: var(--font-sans);
   color: var(--color-ink);
-  background: #9be3f2; /* shown for a moment before the scene is drawn */
+  background: #e9edf0; /* shown for a moment before the scene is drawn */
   -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums; /* numbers line up in tables and cards */
+  overflow-wrap: anywhere; /* long Hindi / Telugu words wrap instead of overflowing */
 }
+html[lang="hi"] body, html[lang="te"] body { line-height: 1.6; }
 
-/* White, slightly transparent card used for all content on top of the scene. */
+/* Near-solid white card used for all content on top of the scene. */
 .glass {
-  background: rgb(255 255 255 / 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-radius: 1rem;
-  box-shadow: 0 6px 24px rgb(15 60 90 / 0.14);
+  background: rgb(255 255 255 / 0.94);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 16px rgb(15 23 42 / 0.05);
 }
 
 /* Clouds drift very slowly. Switched off for people who prefer less motion. */
 @keyframes drift {
-  from { transform: translateX(-40px); }
-  to { transform: translateX(60px); }
+  from { transform: translateX(-30px); }
+  to { transform: translateX(40px); }
 }
-.cloud-drift { animation: drift 90s ease-in-out infinite alternate; }
-.cloud-drift-slow { animation: drift 140s ease-in-out infinite alternate-reverse; }
+.cloud-drift { animation: drift 120s ease-in-out infinite alternate; }
+.cloud-drift-slow { animation: drift 180s ease-in-out infinite alternate-reverse; }
 @media (prefers-reduced-motion: reduce) {
   .cloud-drift, .cloud-drift-slow { animation: none; }
+  .pop-in { animation: none; }
 }
 
-@keyframes pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-.pop-in { animation: pop 0.2s ease-out; }
+@keyframes pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.pop-in { animation: pop 0.18s ease-out; }
 
-input, select, textarea { font: inherit; }
-:focus-visible { outline: 3px solid color-mix(in srgb, var(--color-primary) 55%, white); outline-offset: 2px; }
+input, select, textarea, button { font: inherit; }
+:focus-visible { outline: 2px solid color-mix(in srgb, var(--color-primary) 60%, white); outline-offset: 2px; }

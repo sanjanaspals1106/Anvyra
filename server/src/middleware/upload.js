@@ -17,5 +17,5 @@ export const uploadPhoto = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) =>
-    file.mimetype.startsWith('image/') ? cb(null, true) : cb(httpError(400, 'Only image files are allowed.')),
+    file.mimetype.startsWith('image/') ? cb(null, true) : cb(httpError(400, 'Only image files are allowed.', 'IMAGE_ONLY')),
 }).single('photo');

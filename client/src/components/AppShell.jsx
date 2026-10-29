@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../auth/AuthContext';
 import api from '../api';
 import { initials } from '../utils/format';
+import { L } from '../utils/l10n';
 import Logo from './Logo';
 import LanguageSwitch from './LanguageSwitch';
 import CountrysideBackground from './CountrysideBackground';
@@ -29,8 +30,8 @@ const SUPERVISOR_NAV = [
 ];
 
 const linkClass = ({ isActive }) =>
-  `flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-bold transition ${
-    isActive ? 'bg-primary text-white shadow' : 'text-ink/80 hover:bg-primary/10'
+  `flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-medium transition ${
+    isActive ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-100'
   }`;
 
 function titleFor(pathname, t, nav) {
@@ -41,7 +42,7 @@ function titleFor(pathname, t, nav) {
 
 export default function AppShell() {
   const { user, logout } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false); // sidebar on phones
   const [counts, setCounts] = useState({});
@@ -61,12 +62,16 @@ export default function AppShell() {
   useEffect(() => setOpen(false), [pathname]); // close the menu after choosing a page
 
   const nav = isOfficer ? OFFICER_NAV : SUPERVISOR_NAV;
+  const pageTitle = titleFor(pathname, t, nav);
+
+  // The browser tab title follows the page and the language.
+  useEffect(() => { document.title = `${pageTitle} · ANVYRA`; }, [pageTitle, i18n.language]);
 
   const sidebar = (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between px-4 py-4">
         <Logo />
-        <button className="rounded-lg p-1.5 hover:bg-gray-100 lg:hidden" onClick={() => setOpen(false)} aria-label={t('nav.close')}>
+        <button className="rounded-lg p-1.5 hover:bg-slate-100 lg:hidden" onClick={() => setOpen(false)} aria-label={t('nav.close')}>
           <X className="h-5 w-5" />
         </button>
       </div>
@@ -76,32 +81,32 @@ export default function AppShell() {
             <n.icon className="h-5 w-5 shrink-0" />
             <span className="flex-1">{t(n.key)}</span>
             {n.badge && counts[n.badge] > 0 && (
-              <span className={`rounded-full px-2 py-0.5 text-xs font-extrabold text-white ${n.badgeTone}`}>{counts[n.badge]}</span>
+              <span className={`rounded-md px-1.5 py-0.5 text-xs font-medium text-white ${n.badgeTone}`}>{counts[n.badge]}</span>
             )}
           </NavLink>
         ))}
         {isOfficer && projects.length > 0 && (
           <div className="pt-3">
-            <p className="px-3 pb-1 text-xs font-extrabold uppercase tracking-wide text-ink/50">{t('nav.projects')}</p>
+            <p className="px-3 pb-1 text-xs font-medium uppercase tracking-wide text-mute">{t('nav.projects')}</p>
             {projects.map((p) => (
               <NavLink key={p.projectId} to={`/projects/${p.projectId}`} className={linkClass}>
                 <FolderKanban className="h-5 w-5 shrink-0" />
-                <span className="truncate">{p.name}</span>
+                <span className="truncate">{L(p.name)}</span>
               </NavLink>
             ))}
           </div>
         )}
       </nav>
-      <div className="border-t border-gray-200 p-3">
+      <div className="border-t border-slate-200 p-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-extrabold text-white">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
             {initials(user.name)}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-extrabold">{user.name}</p>
-            <p className="truncate text-xs font-semibold text-ink/60">{isOfficer ? t('nav.villageOfficer') : t('nav.siteSupervisor')}</p>
+            <p className="truncate text-sm font-semibold">{user.name}</p>
+            <p className="truncate text-xs text-mute">{isOfficer ? t('roles.officer') : t('roles.supervisor')}</p>
           </div>
-          <button onClick={logout} className="rounded-lg p-2 text-ink/70 hover:bg-gray-100" aria-label={t('nav.signOut')} title={t('nav.signOut')}>
+          <button onClick={logout} className="rounded-lg p-2 text-mute hover:bg-slate-100" aria-label={t('nav.signOut')} title={t('nav.signOut')}>
             <LogOut className="h-5 w-5" />
           </button>
         </div>
@@ -114,35 +119,33 @@ export default function AppShell() {
       <CountrysideBackground />
       <div className="relative z-10 min-h-screen lg:flex">
         {/* Sidebar: fixed on large screens, slides in on phones */}
-        <aside className="glass fixed inset-y-3 left-3 hidden w-64 lg:block">{sidebar}</aside>
+        <aside className="glass fixed inset-y-3 left-3 hidden w-64 !bg-white/90 lg:block">{sidebar}</aside>
         {open && (
           <div className="fixed inset-0 z-40 lg:hidden">
-            <div className="absolute inset-0 bg-black/30" onClick={() => setOpen(false)} />
-            <aside className="pop-in absolute inset-y-0 left-0 w-72 bg-white/95 shadow-2xl backdrop-blur">{sidebar}</aside>
+            <div className="absolute inset-0 bg-slate-900/30" onClick={() => setOpen(false)} />
+            <aside className="pop-in absolute inset-y-0 left-0 w-72 bg-white/95 shadow-xl backdrop-blur">{sidebar}</aside>
           </div>
         )}
 
         <div className="min-w-0 flex-1 lg:pl-72">
           <header className="sticky top-0 z-30 flex items-center gap-3 px-3 py-3 sm:px-5 lg:pr-5">
-            <button className="glass rounded-xl p-2.5 lg:hidden" onClick={() => setOpen(true)} aria-label={t('nav.menu')}>
+            <button className="glass rounded-lg p-2.5 lg:hidden" onClick={() => setOpen(true)} aria-label={t('nav.menu')}>
               <Menu className="h-5 w-5" />
             </button>
-            <div className="glass flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-2.5">
+            <div className="glass flex min-w-0 flex-1 items-center justify-between gap-3 !bg-white/90 px-4 py-2.5">
               <div className="min-w-0">
-                <p className="truncate text-lg font-extrabold leading-tight">{titleFor(pathname, t, nav)}</p>
+                <p className="truncate text-base font-semibold leading-tight sm:text-lg">{pageTitle}</p>
                 {!isOfficer && <ProjectName />}
               </div>
               <div className="flex shrink-0 items-center gap-3">
-                {!isOfficer && <LanguageSwitch className="hidden sm:inline-flex !bg-gray-100" />}
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-white" title={user.name}>
+                {!isOfficer && <LanguageSwitch className="hidden sm:inline-flex !bg-slate-100" />}
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary" title={user.name}>
                   {initials(user.name)}
                 </div>
               </div>
             </div>
           </header>
-          {!isOfficer && (
-            <div className="px-3 pb-1 sm:hidden"><LanguageSwitch className="w-full justify-center" /></div>
-          )}
+          <div className="px-3 pb-1 sm:hidden"><LanguageSwitch className="flex w-full justify-center" /></div>
           <main className="mx-auto max-w-6xl px-3 pb-24 pt-2 sm:px-5">
             <Outlet />
           </main>
@@ -154,9 +157,10 @@ export default function AppShell() {
 
 // Supervisor's project name under the page title.
 function ProjectName() {
+  useTranslation(); // redraw when the language changes
   const [name, setName] = useState('');
   useEffect(() => {
     api.get('/projects').then((r) => setName(r.data.projects[0]?.name || '')).catch(() => {});
   }, []);
-  return name ? <p className="truncate text-xs font-bold text-primary-dark">{name}</p> : null;
+  return name ? <p className="truncate text-xs text-mute">{L(name)}</p> : null;
 }

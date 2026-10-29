@@ -22,6 +22,7 @@ router.get('/dashboard', officer, wrap(dash.dashboard));
 router.get('/dashboard/counts', officer, wrap(dash.counts));
 router.get('/dashboard/progress-history', officer, wrap(dash.progressHistory));
 
+router.get('/names', wrap(projects.listNames));
 router.get('/projects', wrap(projects.listProjects));
 router.get('/projects/:id', projectAccess(), wrap(projects.getProject));
 router.get('/projects/:id/updates', projectAccess(), wrap(projects.projectUpdates));

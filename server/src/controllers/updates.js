@@ -9,8 +9,8 @@ const MAX_TEXT = 1000;
 
 const cleanText = (value) => {
   const text = String(value || '').trim();
-  if (!text) throw httpError(400, 'Please write what work was done.');
-  if (text.length > MAX_TEXT) throw httpError(400, `Please keep the update under ${MAX_TEXT} characters.`);
+  if (!text) throw httpError(400, 'Please write what work was done.', 'UPDATE_TEXT_REQUIRED');
+  if (text.length > MAX_TEXT) throw httpError(400, `Please keep the update under ${MAX_TEXT} characters.`, 'UPDATE_TOO_LONG', { max: MAX_TEXT });
   return text;
 };
 
@@ -34,8 +34,8 @@ export async function createUpdate(req, res) {
   let workDate = new Date();
   if (req.body.workDate) {
     workDate = new Date(req.body.workDate);
-    if (Number.isNaN(workDate.getTime())) throw httpError(400, 'That date is not valid.');
-    if (workDate.getTime() > Date.now() + 24 * 60 * 60 * 1000) throw httpError(400, 'The work date cannot be in the future.');
+    if (Number.isNaN(workDate.getTime())) throw httpError(400, 'That date is not valid.', 'INVALID_DATE_GENERIC');
+    if (workDate.getTime() > Date.now() + 24 * 60 * 60 * 1000) throw httpError(400, 'The work date cannot be in the future.', 'WORK_DATE_FUTURE');
   }
   const result = await matchUpdate({ text, projectId: req.user.projectId });
   const update = await Update.create({
@@ -69,7 +69,7 @@ export async function myUpdates(req, res) {
 // GET /api/updates/review?status=waiting - officer's queue: needs_check first, then oldest first
 export async function reviewQueue(req, res) {
   const status = req.query.status || 'waiting';
-  if (!['waiting', 'approved', 'rejected'].includes(status)) throw httpError(400, 'Unknown status.');
+  if (!['waiting', 'approved', 'rejected'].includes(status)) throw httpError(400, 'Unknown status.', 'UNKNOWN_STATUS');
   const updates = await Update.find({ status })
     .populate('projectId', 'name type')
     .populate('supervisorId', 'name')
@@ -86,7 +86,7 @@ export async function reviewQueue(req, res) {
 
 // Checks the officer's edits and returns the final items list (does not save anything).
 async function applyEdits(update, edits = []) {
-  if (!Array.isArray(edits)) throw httpError(400, 'Items must be a list.');
+  if (!Array.isArray(edits)) throw httpError(400, 'Items must be a list.', 'ITEMS_NOT_LIST');
   const [tasks, materials] = await Promise.all([
     Task.find({ projectId: update.projectId }).select('_id').lean(),
     Material.find({ projectId: update.projectId }).select('_id').lean(),
@@ -97,30 +97,30 @@ async function applyEdits(update, edits = []) {
 
   for (const edit of edits) {
     const item = items.find((it) => String(it._id) === String(edit._id));
-    if (!item) throw httpError(400, 'One of the edited items does not belong to this update.');
+    if (!item) throw httpError(400, 'One of the edited items does not belong to this update.', 'ITEM_NOT_IN_UPDATE');
     if (edit.quantity !== undefined) {
       const q = Number(edit.quantity);
-      if (!Number.isFinite(q) || q < 0) throw httpError(400, 'Quantity must be a number, zero or more.');
+      if (!Number.isFinite(q) || q < 0) throw httpError(400, 'Quantity must be a number, zero or more.', 'QUANTITY_INVALID');
       item.quantity = q;
     }
     // The officer may pick another task (or material) from the same project.
     if (item.kind === 'task' && edit.taskId) {
-      if (!taskIds.has(String(edit.taskId))) throw httpError(400, 'That task is not part of this project.');
+      if (!taskIds.has(String(edit.taskId))) throw httpError(400, 'That task is not part of this project.', 'TASK_NOT_IN_PROJECT');
       item.taskId = edit.taskId;
       item.matchStatus = 'matched';
     }
     if (item.kind === 'material' && edit.materialId) {
-      if (!materialIds.has(String(edit.materialId))) throw httpError(400, 'That material is not part of this project.');
+      if (!materialIds.has(String(edit.materialId))) throw httpError(400, 'That material is not part of this project.', 'MATERIAL_NOT_IN_PROJECT');
       item.materialId = edit.materialId;
       item.matchStatus = 'matched';
     }
   }
   for (const [n, item] of items.entries()) {
     const target = item.kind === 'task' ? item.taskId : item.materialId;
-    if (!target) throw httpError(400, `Item ${n + 1}: please choose a ${item.kind} before approving.`);
-    if (!(item.quantity > 0)) throw httpError(400, `Item ${n + 1}: please enter a quantity above zero.`);
+    if (!target) throw httpError(400, `Item ${n + 1}: please choose a ${item.kind} before approving.`, 'ITEM_CHOOSE_TARGET', { n: n + 1, kind: item.kind });
+    if (!(item.quantity > 0)) throw httpError(400, `Item ${n + 1}: please enter a quantity above zero.`, 'ITEM_QUANTITY_REQUIRED', { n: n + 1 });
   }
-  if (!items.length) throw httpError(400, 'This update has nothing to approve. Please reject it with a comment.');
+  if (!items.length) throw httpError(400, 'This update has nothing to approve. Please reject it with a comment.', 'NOTHING_TO_APPROVE');
   return items;
 }
 
@@ -142,14 +142,14 @@ async function decide(req, set) {
     { $set: { ...set, reviewedBy: req.user._id, reviewedAt: new Date() } },
     { new: true }
   );
-  if (!done) throw httpError(409, 'This update was already approved or rejected.');
+  if (!done) throw httpError(409, 'This update was already approved or rejected.', 'UPDATE_ALREADY_DECIDED');
   return done;
 }
 
 async function loadWaiting(id) {
   const update = await Update.findById(checkId(id));
-  if (!update) throw httpError(404, 'Update not found.');
-  if (update.status !== 'waiting') throw httpError(409, 'This update was already approved or rejected.');
+  if (!update) throw httpError(404, 'Update not found.', 'UPDATE_NOT_FOUND');
+  if (update.status !== 'waiting') throw httpError(409, 'This update was already approved or rejected.', 'UPDATE_ALREADY_DECIDED');
   return update;
 }
 
@@ -160,7 +160,7 @@ export async function approve(req, res) {
   const items = await applyEdits(update, req.body.items);
   const over = await overPlannedTasks(update, items);
   if (over.length && !comment) {
-    throw httpError(400, `This goes above the planned quantity for ${over.join(', ')}. Please write a comment to approve.`);
+    throw httpError(400, `This goes above the planned quantity for ${over.join(', ')}. Please write a comment to approve.`, 'OVER_PLANNED_COMMENT', { tasks: over.join(', ') });
   }
   const done = await decide(req, { status: 'approved', items, officerComment: comment, matchStatus: 'matched' });
   await logActivity({
@@ -173,7 +173,7 @@ export async function approve(req, res) {
 // PATCH /api/updates/:id/reject { comment }
 export async function reject(req, res) {
   const comment = String(req.body.comment || '').trim();
-  if (!comment) throw httpError(400, 'Please write a comment so the supervisor knows why.');
+  if (!comment) throw httpError(400, 'Please write a comment so the supervisor knows why.', 'COMMENT_REQUIRED');
   await loadWaiting(req.params.id);
   const done = await decide(req, { status: 'rejected', officerComment: comment });
   await logActivity({

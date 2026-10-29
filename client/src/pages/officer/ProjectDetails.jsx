@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Plus, PackageMinus, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import api, { errorText } from '../../api';
 import { useFetch } from '../../hooks';
 import { useToast } from '../../components/Toast';
 import { Badge, Button, Card, EmptyState, Field, inputClass, Loaded, PageHeader, ProgressBar, ProgressRing } from '../../components/ui';
 import { UpdateRow } from '../../components/UpdateParts';
-import { metaFor } from '../../utils/projectMeta';
+import { metaFor, COLORS } from '../../utils/projectMeta';
 import { fmtDate, inr, num, toInputDate } from '../../utils/format';
+import { L, Ldesc, unitName, activityText } from '../../utils/l10n';
 
 function AddExpense({ projectId, onSaved }) {
+  const { t } = useTranslation();
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ amount: '', date: toInputDate(), note: '' });
@@ -22,7 +25,7 @@ function AddExpense({ projectId, onSaved }) {
     setError('');
     try {
       await api.post(`/projects/${projectId}/expenses`, form);
-      toast('Expense added');
+      toast(t('proj.expenseAdded'));
       setForm({ amount: '', date: toInputDate(), note: '' });
       setOpen(false);
       onSaved();
@@ -33,30 +36,25 @@ function AddExpense({ projectId, onSaved }) {
     }
   }
 
-  if (!open) return <Button variant="ghost" onClick={() => setOpen(true)}><Plus className="h-4 w-4" />Add expense</Button>;
+  if (!open) return <Button variant="ghost" onClick={() => setOpen(true)}><Plus className="h-4 w-4" />{t('proj.addExpense')}</Button>;
   return (
-    <form onSubmit={save} className="space-y-3 rounded-xl bg-white/80 p-3 ring-1 ring-black/5">
+    <form onSubmit={save} className="space-y-3 rounded-lg border border-slate-200 bg-white p-3">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Amount (₹)"><input required type="number" min="1" className={inputClass} value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></Field>
-        <Field label="Date"><input required type="date" className={inputClass} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
+        <Field label={t('proj.amount')}><input required type="number" min="1" className={inputClass} value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></Field>
+        <Field label={t('proj.date')}><input required type="date" className={inputClass} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
       </div>
-      <Field label="What was it for?"><input className={inputClass} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></Field>
-      {error && <p role="alert" className="text-sm font-bold text-danger">{error}</p>}
+      <Field label={t('proj.whatFor')}><input className={inputClass} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></Field>
+      {error && <p role="alert" className="text-sm font-medium text-danger">{error}</p>}
       <div className="flex gap-2">
-        <Button type="submit" busy={busy}>Save expense</Button>
-        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+        <Button type="submit" busy={busy}>{t('proj.saveExpense')}</Button>
+        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>{t('common.cancel')}</Button>
       </div>
     </form>
   );
 }
 
-const ACTION_TEXT = {
-  update_submitted: 'Update sent', update_approved: 'Update approved', update_rejected: 'Update rejected',
-  material_received: 'Material received', issue_raised: 'Issue reported', issue_resolved: 'Issue resolved',
-  expense_added: 'Expense added', supervisor_added: 'Supervisor added', supervisor_changed: 'Supervisor changed',
-};
-
 export default function ProjectDetails() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const detail = useFetch(`/projects/${id}`);
   const expenses = useFetch(`/projects/${id}/expenses`);
@@ -73,48 +71,48 @@ export default function ProjectDetails() {
         const resolved = (issues.data?.issues || []).filter((i) => i.status === 'resolved');
         return (
           <>
-            <PageHeader title={d.project.name} subtitle={d.project.description} />
+            <PageHeader title={L(d.project.name)} subtitle={Ldesc(d.project.description)} />
             <Card className="flex flex-wrap items-center gap-5">
-              <span className="flex h-14 w-14 items-center justify-center rounded-2xl text-white" style={{ background: color }}><Icon className="h-7 w-7" /></span>
-              <ProgressRing percent={d.progressPercent} size={96} color={s.onTrack ? '#2E9E44' : '#D93F3F'} />
-              <div className="space-y-1 text-sm font-bold">
-                <Badge tone={s.onTrack ? 'green' : 'red'}>{s.onTrack ? 'On track' : 'Delayed'}</Badge>
-                <p className="text-ink/70">Planned today: {num(d.project.plannedPercent)}%</p>
-                <p className="text-ink/70">Supervisor: {d.project.supervisorId?.name || '-'}</p>
-                <p className="text-ink/70">{fmtDate(d.project.startDate)} to {fmtDate(d.project.endDate)}</p>
+              <span className="flex h-14 w-14 items-center justify-center rounded-lg text-white" style={{ background: color }}><Icon className="h-7 w-7" strokeWidth={1.5} /></span>
+              <ProgressRing percent={d.progressPercent} size={96} color={s.onTrack ? COLORS.onTrack : COLORS.late} />
+              <div className="space-y-1 text-sm">
+                <Badge tone={s.onTrack ? 'green' : 'red'}>{s.onTrack ? t('home.onTrack') : t('home.delayed')}</Badge>
+                <p className="text-mute">{t('proj.plannedToday', { n: num(d.project.plannedPercent) })}</p>
+                <p className="text-mute">{t('proj.supervisor', { name: d.project.supervisorId?.name || '-' })}</p>
+                <p className="text-mute">{t('proj.period', { from: fmtDate(d.project.startDate), to: fmtDate(d.project.endDate) })}</p>
               </div>
             </Card>
 
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
               <Card>
-                <h3 className="mb-3 text-lg font-extrabold">Work progress</h3>
+                <h3 className="mb-3 text-base font-semibold">{t('proj.workProgress')}</h3>
                 <ul className="space-y-3">
-                  {d.tasks.map((t) => (
-                    <li key={t.taskId}>
-                      <div className="mb-1 flex justify-between gap-2 text-sm font-bold">
-                        <span>{t.name}</span>
-                        <span className="shrink-0 text-ink/70">{num(t.doneQty)} / {num(t.plannedQty)} {t.unit} ({num(t.percent)}%)</span>
+                  {d.tasks.map((task) => (
+                    <li key={task.taskId}>
+                      <div className="mb-1 flex justify-between gap-2 text-sm font-medium">
+                        <span>{L(task.name)}</span>
+                        <span className="shrink-0 text-mute">{num(task.doneQty)} / {num(task.plannedQty)} {unitName(task.unit)} ({num(task.percent)}%)</span>
                       </div>
-                      <ProgressBar percent={t.percent} color={t.percent >= 100 ? 'bg-success' : 'bg-primary'} />
+                      <ProgressBar percent={task.percent} color={task.percent >= 100 ? 'bg-success' : 'bg-primary'} />
                     </li>
                   ))}
                 </ul>
               </Card>
 
               <Card>
-                <h3 className="mb-3 text-lg font-extrabold">Materials</h3>
+                <h3 className="mb-3 text-base font-semibold">{t('proj.materials')}</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
-                    <thead className="text-xs uppercase text-ink/55">
-                      <tr><th className="pb-2">Material</th><th className="pb-2 text-right">Received</th><th className="pb-2 text-right">Used</th><th className="pb-2 text-right">In stock</th></tr>
+                    <thead className="text-xs uppercase text-mute">
+                      <tr><th className="pb-2 text-left font-medium">{t('proj.material')}</th><th className="pb-2 text-right font-medium">{t('proj.received')}</th><th className="pb-2 text-right font-medium">{t('proj.used')}</th><th className="pb-2 text-right font-medium">{t('proj.inStock')}</th></tr>
                     </thead>
                     <tbody className="font-semibold">
                       {d.materials.map((m) => (
-                        <tr key={m.materialId} className={`border-t border-gray-200 ${m.lowStock ? 'bg-danger/10' : ''}`}>
-                          <td className="py-2">{m.name} <span className="text-xs text-ink/50">({m.unit})</span></td>
+                        <tr key={m.materialId} className={`border-t border-slate-200 ${m.lowStock ? 'bg-danger/5' : ''}`}>
+                          <td className="py-2">{L(m.name)} <span className="text-xs text-mute">({unitName(m.unit)})</span></td>
                           <td className="py-2 text-right">{num(m.received)}</td>
                           <td className="py-2 text-right">{num(m.used)}</td>
-                          <td className={`py-2 text-right font-extrabold ${m.lowStock ? 'text-danger' : ''}`}>
+                          <td className={`py-2 text-right font-semibold ${m.lowStock ? 'text-danger' : ''}`}>
                             {m.lowStock && <PackageMinus className="mr-1 inline h-4 w-4" />}{num(m.stock)}
                           </td>
                         </tr>
@@ -126,41 +124,41 @@ export default function ProjectDetails() {
 
               <Card>
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <h3 className="text-lg font-extrabold">Budget</h3>
-                  {s.budgetWarning && <Badge tone="amber">Spending ahead of work</Badge>}
+                  <h3 className="text-base font-semibold">{t('proj.budget')}</h3>
+                  {s.budgetWarning && <Badge tone="amber">{t('dash.spendingAhead')}</Badge>}
                 </div>
-                <p className="text-3xl font-black">{inr(d.budget.spent)}</p>
-                <p className="mb-2 text-sm font-bold text-ink/65">spent of {inr(d.budget.sanctioned)} ({num(d.budget.percent)}%)</p>
+                <p className="text-2xl font-semibold">{inr(d.budget.spent)}</p>
+                <p className="mb-2 text-sm text-mute">{t('proj.spentOf', { total: inr(d.budget.sanctioned), n: num(d.budget.percent) })}</p>
                 <ProgressBar percent={d.budget.percent} color={s.budgetWarning ? 'bg-warning' : 'bg-accent'} height="h-3" />
-                <ul className="my-4 divide-y divide-gray-200 text-sm font-semibold">
+                <ul className="my-4 divide-y divide-slate-200 text-sm font-semibold">
                   {(expenses.data?.expenses || []).map((e) => (
                     <li key={e._id} className="flex justify-between gap-3 py-2">
-                      <span>{e.note || 'Expense'} <span className="text-xs text-ink/50">· {fmtDate(e.date)}</span></span>
-                      <span className="shrink-0 font-extrabold">{inr(e.amount)}</span>
+                      <span>{e.note || t('proj.expense')} <span className="text-xs text-mute">· {fmtDate(e.date)}</span></span>
+                      <span className="shrink-0 font-semibold">{inr(e.amount)}</span>
                     </li>
                   ))}
-                  {expenses.data?.expenses.length === 0 && <li className="py-2 text-ink/55">No expenses yet.</li>}
+                  {expenses.data?.expenses.length === 0 && <li className="py-2 text-mute">{t('proj.noExpenses')}</li>}
                 </ul>
                 <AddExpense projectId={id} onSaved={() => { expenses.reload(); detail.reload(); }} />
               </Card>
 
               <Card>
-                <h3 className="mb-3 text-lg font-extrabold">Issues</h3>
+                <h3 className="mb-3 text-base font-semibold">{t('proj.issues')}</h3>
                 {issues.loading && !issues.data ? null : (
                   <>
-                    {open.length === 0 && <p className="mb-2 flex items-center gap-1.5 text-sm font-bold text-success"><CheckCircle2 className="h-4 w-4" />No open issues</p>}
+                    {open.length === 0 && <p className="mb-2 flex items-center gap-1.5 text-sm font-medium text-success"><CheckCircle2 className="h-4 w-4" />{t('proj.noOpenIssues')}</p>}
                     <ul className="space-y-2">
                       {open.map((i) => (
-                        <li key={i._id} className="rounded-xl bg-danger/10 p-3 text-sm font-semibold">
-                          <p className="mb-1 flex items-center gap-1.5 font-extrabold text-danger"><AlertTriangle className="h-4 w-4" /><span className="capitalize">{i.type}</span> · {fmtDate(i.raisedAt)}</p>
+                        <li key={i._id} className="rounded-lg bg-danger/5 p-3 text-sm">
+                          <p className="mb-1 flex items-center gap-1.5 font-semibold text-danger"><AlertTriangle className="h-4 w-4" />{t(`mat.types.${i.type}`)} · {fmtDate(i.raisedAt)}</p>
                           {i.description}
                         </li>
                       ))}
                       {resolved.map((i) => (
-                        <li key={i._id} className="rounded-xl bg-white/70 p-3 text-sm font-semibold ring-1 ring-black/5">
-                          <p className="mb-1 text-xs font-extrabold text-success">Resolved {fmtDate(i.resolvedAt)} · <span className="capitalize">{i.type}</span></p>
+                        <li key={i._id} className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
+                          <p className="mb-1 text-xs font-medium text-success">{t('proj.resolvedOn', { date: fmtDate(i.resolvedAt) })} · {t(`mat.types.${i.type}`)}</p>
                           {i.description}
-                          <p className="mt-1 text-xs text-ink/60">Note: {i.resolutionNote}</p>
+                          <p className="mt-1 text-xs text-mute">{t('proj.note', { text: i.resolutionNote })}</p>
                         </li>
                       ))}
                     </ul>
@@ -171,22 +169,22 @@ export default function ProjectDetails() {
 
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
               <Card>
-                <h3 className="mb-3 text-lg font-extrabold">Update history</h3>
-                {(updates.data?.updates || []).length === 0 ? <EmptyState text="No updates yet." /> : (
+                <h3 className="mb-3 text-base font-semibold">{t('proj.history')}</h3>
+                {(updates.data?.updates || []).length === 0 ? <EmptyState text={t('proj.noUpdates')} /> : (
                   <ul className="max-h-[28rem] space-y-2 overflow-y-auto pr-1">
                     {updates.data.updates.map((u) => <UpdateRow key={u._id} update={u} />)}
                   </ul>
                 )}
               </Card>
               <Card>
-                <h3 className="mb-3 text-lg font-extrabold">Activity log</h3>
-                {(activity.data?.activity || []).length === 0 ? <EmptyState text="No activity yet." /> : (
-                  <ul className="max-h-[28rem] divide-y divide-gray-200 overflow-y-auto pr-1 text-sm">
+                <h3 className="mb-3 text-base font-semibold">{t('proj.activity')}</h3>
+                {(activity.data?.activity || []).length === 0 ? <EmptyState text={t('proj.noActivity')} /> : (
+                  <ul className="max-h-[28rem] divide-y divide-slate-200 overflow-y-auto pr-1 text-sm">
                     {activity.data.activity.map((a) => (
                       <li key={a._id} className="py-2">
-                        <p className="flex justify-between gap-2 text-xs font-extrabold text-ink/55"><span>{ACTION_TEXT[a.action]}</span><span>{fmtDate(a.at)}</span></p>
-                        <p className="font-semibold">{a.details}</p>
-                        <p className="text-xs font-semibold text-ink/50">by {a.userId?.name || 'someone'}</p>
+                        <p className="flex justify-between gap-2 text-xs font-medium text-mute"><span>{t(`activity.${a.action}`, { defaultValue: a.action })}</span><span>{fmtDate(a.at)}</span></p>
+                        <p>{activityText(a.details)}</p>
+                        <p className="text-xs text-mute">{t('proj.by', { name: a.userId?.name || t('proj.someone') })}</p>
                       </li>
                     ))}
                   </ul>

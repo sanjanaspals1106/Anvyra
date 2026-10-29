@@ -7,6 +7,7 @@ import { useFetch } from '../../hooks';
 import { useToast } from '../../components/Toast';
 import { Badge, Button, Card, EmptyState, Field, inputClass, Loaded, PageHeader } from '../../components/ui';
 import { fmtDate, num, toInputDate } from '../../utils/format';
+import { L, unitName } from '../../utils/l10n';
 
 const TYPES = ['weather', 'material', 'labour', 'land', 'other'];
 
@@ -41,15 +42,15 @@ function ReceiptForm({ projectId, materials, onSaved }) {
       <Field label={t('mat.name')}>
         <select className={inputClass} value={form.materialId} onChange={set('materialId')}>
           <option value="">{t('mat.chooseMaterial')}</option>
-          {materials.map((m) => <option key={m.materialId} value={m.materialId}>{m.name} ({m.unit})</option>)}
+          {materials.map((m) => <option key={m.materialId} value={m.materialId}>{L(m.name)} ({unitName(m.unit)})</option>)}
         </select>
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={`${t('mat.quantity')}${unit ? ` (${unit})` : ''}`}><input type="number" min="0" step="any" className={inputClass} value={form.quantity} onChange={set('quantity')} /></Field>
+        <Field label={`${t('mat.quantity')}${unit ? ` (${unitName(unit)})` : ''}`}><input type="number" min="0" step="any" className={inputClass} value={form.quantity} onChange={set('quantity')} /></Field>
         <Field label={t('mat.date')}><input type="date" max={toInputDate()} className={inputClass} value={form.date} onChange={set('date')} /></Field>
       </div>
       <Field label={t('mat.note')}><input className={inputClass} value={form.note} onChange={set('note')} /></Field>
-      {error && <p role="alert" className="rounded-xl bg-danger/10 px-3 py-2 text-sm font-bold text-danger">{error}</p>}
+      {error && <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{error}</p>}
       <Button type="submit" busy={busy} className="w-full"><PackagePlus className="h-4 w-4" />{t('mat.save')}</Button>
     </form>
   );
@@ -97,11 +98,11 @@ function IssueForm({ projectId, onSaved }) {
         <textarea rows={3} className={inputClass} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
       </Field>
       <div>
-        <span className="mb-1 block text-sm font-bold text-ink/80">{t('mat.photoOptional')}</span>
-        <input ref={file} type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files[0] || null)} className="block w-full text-sm font-semibold file:mr-3 file:rounded-xl file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:font-bold file:text-primary-dark" />
-        {photo && <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-ink/60"><Camera className="h-3.5 w-3.5" />{photo.name}</p>}
+        <span className="mb-1 block text-sm font-medium text-slate-700">{t('mat.photoOptional')}</span>
+        <input ref={file} type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files[0] || null)} className="block w-full text-sm font-semibold file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-4 file:py-2 file:font-medium file:text-primary-dark" />
+        {photo && <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-mute"><Camera className="h-3.5 w-3.5" />{photo.name}</p>}
       </div>
-      {error && <p role="alert" className="rounded-xl bg-danger/10 px-3 py-2 text-sm font-bold text-danger">{error}</p>}
+      {error && <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{error}</p>}
       <Button type="submit" variant="danger" busy={busy} className="w-full"><Siren className="h-4 w-4" />{t('mat.report')}</Button>
     </form>
   );
@@ -120,21 +121,21 @@ export default function MaterialsIssues() {
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <div className="space-y-4">
           <Card>
-            <h3 className="mb-3 text-lg font-extrabold">{t('mat.stockTitle')}</h3>
+            <h3 className="mb-3 text-lg font-semibold">{t('mat.stockTitle')}</h3>
             <Loaded state={project}>
               {(d) => (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
-                    <thead className="text-xs uppercase text-ink/55">
+                    <thead className="text-xs uppercase text-mute">
                       <tr><th className="pb-2">{t('mat.name')}</th><th className="pb-2 text-right">{t('mat.received')}</th><th className="pb-2 text-right">{t('mat.used')}</th><th className="pb-2 text-right">{t('mat.stock')}</th></tr>
                     </thead>
                     <tbody className="font-semibold">
                       {d.materials.map((m) => (
-                        <tr key={m.materialId} className={`border-t border-gray-200 ${m.lowStock ? 'bg-danger/10' : ''}`}>
-                          <td className="py-2">{m.name} <span className="text-xs text-ink/50">({m.unit})</span></td>
+                        <tr key={m.materialId} className={`border-t border-slate-200 ${m.lowStock ? 'bg-danger/10' : ''}`}>
+                          <td className="py-2">{L(m.name)} <span className="text-xs text-mute">({unitName(m.unit)})</span></td>
                           <td className="py-2 text-right">{num(m.received)}</td>
                           <td className="py-2 text-right">{num(m.used)}</td>
-                          <td className={`py-2 text-right font-extrabold ${m.lowStock ? 'text-danger' : ''}`}>{num(m.stock)} {m.lowStock && <Badge tone="red">{t('mat.low')}</Badge>}</td>
+                          <td className={`py-2 text-right font-semibold ${m.lowStock ? 'text-danger' : ''}`}>{num(m.stock)} {m.lowStock && <Badge tone="red">{t('mat.low')}</Badge>}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -144,28 +145,28 @@ export default function MaterialsIssues() {
             </Loaded>
           </Card>
           <Card>
-            <h3 className="mb-3 text-lg font-extrabold">{t('mat.receiveTitle')}</h3>
+            <h3 className="mb-3 text-lg font-semibold">{t('mat.receiveTitle')}</h3>
             {project.data && <ReceiptForm projectId={pid} materials={project.data.materials} onSaved={project.reload} />}
           </Card>
         </div>
 
         <div className="space-y-4">
           <Card>
-            <h3 className="mb-3 text-lg font-extrabold">{t('mat.issueTitle')}</h3>
+            <h3 className="mb-3 text-lg font-semibold">{t('mat.issueTitle')}</h3>
             <IssueForm projectId={pid} onSaved={issues.reload} />
           </Card>
           <Card>
-            <h3 className="mb-3 text-lg font-extrabold">{t('mat.myIssues')}</h3>
+            <h3 className="mb-3 text-lg font-semibold">{t('mat.myIssues')}</h3>
             {(issues.data?.issues || []).length === 0 ? <EmptyState text={t('mat.noIssues')} /> : (
               <ul className="space-y-2">
                 {issues.data.issues.map((i) => (
-                  <li key={i._id} className="rounded-xl bg-white/70 p-3 text-sm font-semibold ring-1 ring-black/5">
+                  <li key={i._id} className="rounded-lg border border-slate-200 bg-white p-3 text-sm font-semibold">
                     <div className="mb-1 flex items-center justify-between gap-2">
-                      <span className="text-xs font-extrabold text-ink/55">{t(`mat.types.${i.type}`)} · {fmtDate(i.raisedAt)}</span>
+                      <span className="text-xs font-semibold text-mute">{t(`mat.types.${i.type}`)} · {fmtDate(i.raisedAt)}</span>
                       <Badge tone={i.status === 'open' ? 'red' : 'green'}>{t(`status.${i.status}`)}</Badge>
                     </div>
                     {i.description}
-                    {i.status === 'resolved' && <p className="mt-1 text-xs font-bold text-success">{t('mat.resolvedNote')}: {i.resolutionNote}</p>}
+                    {i.status === 'resolved' && <p className="mt-1 text-xs font-medium text-success">{t('mat.resolvedNote')}: {i.resolutionNote}</p>}
                   </li>
                 ))}
               </ul>

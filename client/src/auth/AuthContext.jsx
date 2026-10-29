@@ -1,22 +1,32 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import i18n from '../i18n';
 import api, { getToken, setToken, setUnauthorizedHandler } from '../api';
+import { setNames } from '../utils/l10n';
 
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 
-// Officer pages are English only; a supervisor uses the language saved on their account.
+// Everyone (officer and supervisor) uses the language saved on their account.
 function applyLanguage(user) {
-  if (!user) return;
-  i18n.changeLanguage(user.role === 'officer' ? 'en' : user.language || 'en');
+  if (user?.language) i18n.changeLanguage(user.language);
+}
+
+// Hindi / Telugu names of projects, tasks and materials, loaded once after sign-in.
+async function loadNames() {
+  try {
+    const res = await api.get('/names');
+    setNames(res.data);
+  } catch { /* English names are used */ }
 }
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(Boolean(getToken()));
+  const pickedBeforeLogin = useRef(false); // language chosen on the login page
 
   const logout = useCallback(() => {
     setToken(null);
+    setNames({});
     setUser(null);
   }, []);
 
@@ -24,7 +34,7 @@ export function AuthProvider({ children }) {
     setUnauthorizedHandler(logout);
     if (!getToken()) return;
     api.get('/auth/me')
-      .then((res) => { setUser(res.data.user); applyLanguage(res.data.user); })
+      .then(async (res) => { applyLanguage(res.data.user); await loadNames(); setUser(res.data.user); })
       .catch(() => setToken(null))
       .finally(() => setLoading(false));
   }, [logout]);
@@ -32,20 +42,26 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password) => {
     const res = await api.post('/auth/login', { email, password });
     setToken(res.data.token);
-    setUser(res.data.user);
-    applyLanguage(res.data.user);
-    return res.data.user;
+    let me = res.data.user;
+    if (pickedBeforeLogin.current) {
+      // The person chose a language on the login page: keep it and save it on their account.
+      try { me = (await api.patch('/auth/language', { language: i18n.language })).data.user; } catch { /* keep going */ }
+    } else {
+      applyLanguage(me);
+    }
+    await loadNames();
+    setUser(me);
+    return me;
   }, []);
 
-  // Switching language: remember it in the browser and on the supervisor's account.
+  // Switching language: change the page, remember it in the browser, and save it on the account.
   const changeLanguage = useCallback(async (lang) => {
     await i18n.changeLanguage(lang);
-    if (user && user.role === 'supervisor') {
-      try {
-        const res = await api.patch('/auth/language', { language: lang });
-        setUser(res.data.user);
-      } catch { /* the page is already translated; saving can fail quietly */ }
-    }
+    if (!user) { pickedBeforeLogin.current = true; return; }
+    try {
+      const res = await api.patch('/auth/language', { language: lang });
+      setUser(res.data.user);
+    } catch { /* the page is already translated; saving can fail quietly */ }
   }, [user]);
 
   const value = useMemo(() => ({ user, loading, login, logout, changeLanguage }), [user, loading, login, logout, changeLanguage]);
